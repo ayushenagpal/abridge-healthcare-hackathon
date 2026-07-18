@@ -324,6 +324,11 @@ export interface PatientState {
     medicationTimelineApproved: boolean;
     finalApproved: boolean;
     readyMarked: boolean;
+    // Pulmonary pathway (Case A)
+    pftResultReceived: boolean;
+    perfusionScanResultReceived: boolean;
+    cpetResultReceived: boolean;
+    mdtReviewApproved: boolean;
   };
 }
 
@@ -336,6 +341,10 @@ export const EMPTY_OPS: PatientState["ops"] = {
   medicationTimelineApproved: false,
   finalApproved: false,
   readyMarked: false,
+  pftResultReceived: false,
+  perfusionScanResultReceived: false,
+  cpetResultReceived: false,
+  mdtReviewApproved: false,
 };
 
 // ---------------------------------------------------------------------------

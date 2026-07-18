@@ -25,7 +25,33 @@ function c(
 export const CITATIONS = {
   procedureClassification: c(
     "Procedure Risk Classification",
-    "Colectomy is an intraperitoneal procedure and is classified as elevated-risk noncardiac surgery.",
+    "Intrathoracic and intraperitoneal procedures are elevated-risk; extremity/low-risk procedures do not require routine cardiac evaluation.",
+  ),
+  noTestingIndicated: c(
+    "Routine Preoperative Testing — Class III (Harm)",
+    "Routine preoperative cardiac testing is not recommended for patients undergoing low-risk surgery.",
+    "3 (Harm)",
+    "B-NR",
+  ),
+  pulmonaryFunctionTesting: c(
+    "Pulmonary Function Testing Before Lung Resection",
+    "Spirometry (FEV1, FVC) and DLCO measurement are required before lung resection to calculate predicted postoperative (ppo) values.",
+  ),
+  ppoCalculation: c(
+    "Predicted Postoperative Lung Function",
+    "ppo FEV1 and ppo DLCO are calculated from preoperative values and the fraction of lung function to be removed. Values < 40% predicted indicate elevated risk.",
+  ),
+  perfusionScan: c(
+    "Quantitative V/Q Perfusion Scan",
+    "When ppo FEV1 or ppo DLCO < 40% by anatomic calculation, quantitative perfusion scanning refines the estimate using actual lobar perfusion contribution.",
+  ),
+  cpet: c(
+    "Cardiopulmonary Exercise Testing (CPET)",
+    "CPET is indicated when ppo values remain < 40% after perfusion-corrected calculation. VO₂max 10–20 mL/kg/min = elevated perioperative pulmonary risk.",
+  ),
+  mdtReview: c(
+    "Multidisciplinary Review for Elevated Pulmonary Risk",
+    "VO₂max 10–20 mL/kg/min does not mandate cancellation but requires multidisciplinary review (thoracic surgery, pulmonology, anesthesia) and documented informed consent regarding perioperative risk.",
   ),
   activeCardiac: c(
     "Active Cardiac Conditions",

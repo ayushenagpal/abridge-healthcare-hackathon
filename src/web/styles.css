@@ -221,8 +221,12 @@ body {
 
 /* ---------------- Bottom bar ---------------- */
 .bottombar { border-top: 1px solid var(--hair); background: var(--panel); }
+.case-tabs { display: flex; gap: 8px; padding: 8px 16px 0; align-items: center; border-bottom: 1px solid var(--hair); }
+.case-tabs .lbl { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; margin-right: 4px; }
 .controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 11px 16px; align-items: center; }
 .controls .lbl { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; margin-right: 4px; }
+.controls .lbl-sm { font-size: 9px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 600; }
+.controls .sep { color: var(--hair); font-size: 16px; margin: 0 2px; }
 
 /* ---------------- Final packet ---------------- */
 .packet { padding: 14px 16px; border-top: 1px solid var(--hair); background: var(--done-bg); }

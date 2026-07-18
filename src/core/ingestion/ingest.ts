@@ -1,11 +1,18 @@
 /**
- * Data ingestion: dataset encounter + synthetic referral -> normalized
- * PatientState with provenance on every field. This path is deterministic and
- * uses no LLM. (Transcript fact extraction is LLM-assisted in a real build;
- * for the demo the one transcript-derived fact — a medication discrepancy — is
- * supplied as marked-synthetic evidence.)
+ * Data ingestion: builds a normalized PatientState for each demo case.
+ *
+ * Case A (Eleanor Marsh): conditions, medications, observations are loaded from
+ * patients.json. The pulmonary pathway uses PFT observations already present
+ * in that file. The medication discrepancy (apixaban) is injected as synthetic
+ * evidence derived from the transcript.
+ *
+ * Case B (David Chen): clean, healthy patient — no conditions, no medications,
+ * excellent functional capacity confirmed from chart. Engine short-circuits to
+ * ready-to-schedule.
+ *
+ * Both paths are deterministic and import no LLM modules.
  */
-import demoEncounter from "../../data/demo-encounter.json";
+import patients from "../../../data/synthetic/patients.json";
 import {
   EMPTY_OPS,
   type ChartCondition,
@@ -17,24 +24,6 @@ import {
 } from "../models";
 import { NOW, buildReferral, SYNTHETIC, syntheticProvenance } from "../synthetic";
 
-interface RawObservation {
-  code?: { text?: string; coding?: { code?: string; system?: string }[] };
-  valueQuantity?: { value?: number; unit?: string };
-  effectiveDateTime?: string;
-  id?: string;
-}
-
-// Social/administrative condition labels that are not clinically relevant here.
-const CONDITION_BLOCKLIST = [
-  "received higher education",
-  "not in labor force",
-  "limited social contact",
-  "social isolation",
-  "stress (finding)",
-  "medication review due",
-  "part-time",
-];
-
 function chartProvenance(reference: string): Provenance {
   return {
     source: "fhir",
@@ -45,90 +34,84 @@ function chartProvenance(reference: string): Provenance {
   };
 }
 
-function ageYears(birthDate: string, nowIso: string): number {
-  const b = new Date(birthDate);
-  const n = new Date(nowIso);
-  let age = n.getFullYear() - b.getFullYear();
-  const m = n.getMonth() - b.getMonth();
-  if (m < 0 || (m === 0 && n.getDate() < b.getDate())) age--;
-  return age;
+function syntheticObsProvenance(reference: string): Provenance {
+  return {
+    source: "synthetic",
+    reference,
+    extractedBy: "fhir-normalizer",
+    verified: true,
+    recordedAt: NOW,
+  };
 }
 
-export function buildInitialState(): PatientState {
-  const enc = demoEncounter as unknown as {
-    metadata: { patient_id: string };
-    patient: {
-      name: { given?: string[]; family?: string; prefix?: string[] }[];
-      birthDate: string;
-      gender: string;
-    };
-    longitudinal_summary: {
-      condition_labels: string[];
-      medication_labels: string[];
-    };
-    related_resources: { Observation: RawObservation[] };
-  };
+// ---------------------------------------------------------------------------
+// Case A — Eleanor Marsh, right upper lobectomy.
+// ---------------------------------------------------------------------------
+function buildCaseAState(): PatientState {
+  const pt = (patients as { patients: typeof patients.patients }).patients.find(
+    (p) => p.id === "case-a-eleanor-marsh",
+  )!;
 
-  const patientId = enc.metadata.patient_id;
-  const nm = enc.patient.name[0];
-  const name = [nm?.prefix?.join(" "), nm?.given?.join(" "), nm?.family]
-    .filter(Boolean)
-    .join(" ");
+  const conditions: ChartCondition[] = pt.conditions.map((c, i) => ({
+    code: c.code,
+    system: "http://snomed.info/sct",
+    text: c.text,
+    clinicalStatus: c.clinicalStatus === "active" ? "active" : "resolved",
+    provenance: chartProvenance(`Condition/eleanor-${i}`),
+  }));
 
-  const referral = buildReferral(patientId);
-
-  const conditions: ChartCondition[] = enc.longitudinal_summary.condition_labels
-    .filter((t) => !CONDITION_BLOCKLIST.some((b) => t.toLowerCase().includes(b)))
-    .map((text, i) => ({
-      code: "chart",
-      system: "http://snomed.info/sct",
-      text,
-      clinicalStatus: "active",
-      provenance: chartProvenance(`Condition/chart-${i}`),
-    }));
-
-  const medications: ChartMedication[] =
-    enc.longitudinal_summary.medication_labels.map((text, i) => ({
-      text,
+  // Active medications from FHIR (excludes the discontinued apixaban — it shows
+  // as DISCONTINUED in FHIR, creating the discrepancy the transcript reveals).
+  const medications: ChartMedication[] = pt.medications.fhirMedications
+    .filter((m) => m.status === "active")
+    .map((m, i) => ({
+      text: m.text,
       status: "active",
-      provenance: chartProvenance(`MedicationRequest/chart-${i}`),
+      provenance: chartProvenance(`MedicationRequest/eleanor-med-${i}`),
     }));
 
-  const observations: ChartObservation[] = (enc.related_resources.Observation ?? [])
-    .filter((o) => o.valueQuantity?.value != null && o.code?.text)
-    .map((o) => ({
-      code: o.code?.coding?.[0]?.code ?? "unknown",
-      system: o.code?.coding?.[0]?.system ?? "http://loinc.org",
-      text: o.code!.text!,
-      value: o.valueQuantity!.value!,
-      unit: o.valueQuantity?.unit,
-      effectiveAt: o.effectiveDateTime,
-      provenance: chartProvenance(`Observation/${o.id ?? "chart"}`),
+  // Observations from patients.json — includes FEV1, DLCO, creatinine, Hgb, BP, etc.
+  // NT-proBNP is excluded from the initial chart — it arrives as a new lab
+  // result during the demo (sim button "Receive NT-proBNP").
+  const observations: ChartObservation[] = pt.observations
+    .filter((o) => !["natriuretic", "probnp", "nt-probnp"].some((k) => o.text.toLowerCase().includes(k)))
+    .map((o, i) => ({
+      code: o.code,
+      system: o.system,
+      text: o.text,
+      value: typeof o.value === "number" ? o.value : null,
+      unit: typeof o.unit === "string" ? o.unit : undefined,
+      effectiveAt: o.effectiveAt,
+      provenance: chartProvenance(`Observation/eleanor-obs-${i}`),
     }));
 
-  // Synthetic transcript-derived medication discrepancy (marked synthetic).
+  // Transcript-derived medication discrepancy (marked synthetic).
   const medDiscrepancy: Evidence = {
     id: "ev-med-discrepancy",
     requirementId: "medication-review",
     kind: "transcript",
-    label: "Transcript: patient-reported medication",
+    label: "Transcript: patient mentions active apixaban for atrial fibrillation",
     content: SYNTHETIC.medicationDiscrepancy,
-    provenance: syntheticProvenance("transcript/medication-addendum"),
+    provenance: syntheticProvenance("transcript/apixaban-mention"),
     validation: {
       status: "accepted-review",
       checkedAt: NOW,
-      reasons: ["Patient statement — requires clinician confirmation"],
+      reasons: [
+        "Patient states taking apixaban daily for heart rhythm — FHIR shows DISCONTINUED 8 months ago. Requires clinician reconciliation.",
+      ],
     },
   };
 
+  const referral = buildReferral(pt.demographics.mrn, "A");
+
   return {
     version: 1,
-    patientId,
+    patientId: pt.demographics.mrn,
     demographics: {
-      name,
-      birthDate: enc.patient.birthDate,
-      gender: enc.patient.gender,
-      ageYears: ageYears(enc.patient.birthDate, NOW),
+      name: pt.demographics.name,
+      birthDate: pt.demographics.dateOfBirth,
+      gender: pt.demographics.sex,
+      ageYears: pt.demographics.ageYears,
     },
     referral,
     conditions,
@@ -141,4 +124,58 @@ export function buildInitialState(): PatientState {
     derived: {},
     ops: { ...EMPTY_OPS },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Case B — David Chen, arthroscopic meniscus repair.
+// ---------------------------------------------------------------------------
+function buildCaseBState(): PatientState {
+  const pt = (patients as { patients: typeof patients.patients }).patients.find(
+    (p) => p.id === "case-b-david-chen",
+  )!;
+
+  const observations: ChartObservation[] = pt.observations.map((o, i) => ({
+    code: o.code,
+    system: o.system,
+    text: o.text,
+    value: typeof o.value === "number" ? o.value : null,
+    unit: typeof o.unit === "string" ? o.unit : undefined,
+    effectiveAt: o.effectiveAt,
+    provenance: syntheticObsProvenance(`Observation/david-obs-${i}`),
+  }));
+
+  const referral = buildReferral(pt.demographics.mrn, "B");
+
+  return {
+    version: 1,
+    patientId: pt.demographics.mrn,
+    demographics: {
+      name: pt.demographics.name,
+      birthDate: pt.demographics.dateOfBirth,
+      gender: pt.demographics.sex,
+      ageYears: pt.demographics.ageYears,
+    },
+    referral,
+    conditions: [],
+    medications: [],
+    observations,
+    // Chart clearly documents ≥ 10 METs — no DASI needed.
+    functionalCapacity: {
+      status: "at-or-above",
+      metsEstimate: 10,
+      provenance: syntheticObsProvenance("chart/exercise-history"),
+    },
+    questionnaires: [],
+    evidence: [],
+    clinicianDecisions: [],
+    derived: {},
+    ops: { ...EMPTY_OPS },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Public entry point.
+// ---------------------------------------------------------------------------
+export function buildInitialState(caseId: "A" | "B" = "A"): PatientState {
+  return caseId === "B" ? buildCaseBState() : buildCaseAState();
 }
