@@ -10,9 +10,21 @@ import ReactFlow, {
 import type { ReadinessGraph as Graph, Requirement } from "../core/models";
 import { STATUS_LABEL, STATUS_TONE } from "./status";
 
+/** Non-blocking, unresolved requirements are recommendations, not blockers —
+ * render them as "Advisory" so they don't read as unmet work. */
+export function isAdvisory(req: Requirement): boolean {
+  return (
+    !req.blocksScheduling &&
+    req.status !== "satisfied" &&
+    req.status !== "not-indicated" &&
+    req.id !== "ready-to-schedule"
+  );
+}
+
 function StatusNode({ data }: NodeProps<{ req: Requirement; critical: boolean }>) {
   const { req, critical } = data;
-  const tone = STATUS_TONE[req.status];
+  const advisory = isAdvisory(req);
+  const tone = advisory ? "advice" : STATUS_TONE[req.status];
   return (
     <div
       className={`rf-node tone-${tone} ${critical ? "critical" : ""}`}
@@ -22,7 +34,9 @@ function StatusNode({ data }: NodeProps<{ req: Requirement; critical: boolean }>
       <div className="t">{req.title}</div>
       {req.detail && <div className="d">{req.detail}</div>}
       <div className="np">
-        <span className={`pill tone-${tone}`}>{STATUS_LABEL[req.status]}</span>
+        <span className={`pill tone-${tone}`}>
+          {advisory ? "Advisory" : STATUS_LABEL[req.status]}
+        </span>
         {critical && <span className="np-crit">critical path</span>}
       </div>
       <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />

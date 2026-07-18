@@ -98,6 +98,14 @@ body {
 .pill.tone-todo { background: var(--todo-bg); color: var(--todo); border-color: var(--todo-br); }
 .pill.tone-stop { background: var(--stop-bg); color: var(--stop); border-color: var(--stop-br); }
 
+/* Advisory = non-blocking recommendation (e.g. ARISCAT prehab bundle) */
+:root { --advice: #6d5bd0; --advice-bg: #f1eefc; --advice-br: #d8cff5; }
+.tone-advice { color: var(--advice); }
+.pill.tone-advice { background: var(--advice-bg); color: var(--advice); border-color: var(--advice-br); }
+.rf-node.tone-advice { border-left-color: var(--advice); }
+.sw.tone-advice { background: var(--advice-bg); border-color: var(--advice); }
+.tv-chip.tone-advice { background: var(--advice-bg); color: var(--advice); border-color: var(--advice-br); }
+
 /* ---------------- Main layout ---------------- */
 .main { display: grid; grid-template-columns: 306px 1fr 348px; min-height: 0; }
 .col { border-right: 1px solid var(--hair); min-height: 0; display: flex; flex-direction: column; }

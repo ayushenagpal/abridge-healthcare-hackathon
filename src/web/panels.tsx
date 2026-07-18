@@ -5,6 +5,7 @@ import type {
 } from "../core/models";
 import type { ActivityEntry, Interaction, Snapshot } from "../core/store";
 import { LEGEND, STATUS_LABEL, STATUS_TONE } from "./status";
+import { isAdvisory } from "./ReadinessGraph";
 
 // ---------------------------------------------------------------------------
 // Status legend + live "what's happening now" bar — the two affordances that
@@ -19,6 +20,10 @@ export function StatusLegend() {
           {l.label}
         </div>
       ))}
+      <div className="lg-row">
+        <span className="sw tone-advice" />
+        Advisory (recommendation, non-blocking)
+      </div>
       <div className="lg-row crit">
         <span className="sw" />
         On critical path
@@ -88,6 +93,9 @@ export function TimelineView({
     );
   const ready = protocol?.pathwayStatus === "ready-to-schedule";
   const isAnalysis = (s: string) => s === "satisfied" || s === "not-indicated";
+  const advisoryIds = new Set(
+    (protocol?.requirements ?? []).filter(isAdvisory).map((r) => r.id),
+  );
 
   type Chip = { id: string; title: string; status: RequirementStatus; badge?: string };
   type Row = {
@@ -168,17 +176,19 @@ export function TimelineView({
                 <span className="tv-nochange">{row.empty}</span>
               )}
               {row.chips.map((n) => {
-                const tone = STATUS_TONE[n.status];
+                const advisory = advisoryIds.has(n.id);
+                const tone = advisory ? "advice" : STATUS_TONE[n.status];
+                const badge = advisory ? "advisory" : n.badge;
                 return (
                   <span
                     key={n.id}
                     className={`tv-chip tone-${tone} active`}
-                    title={`${n.title} — ${STATUS_LABEL[n.status]}`}
+                    title={`${n.title} — ${advisory ? "Advisory" : STATUS_LABEL[n.status]}`}
                   >
                     {tone === "done" && "✓ "}
                     {n.title}
-                    {n.badge && n.badge !== "known" && (
-                      <span className="tv-new">{n.badge}</span>
+                    {badge && badge !== "known" && (
+                      <span className="tv-new">{badge}</span>
                     )}
                   </span>
                 );
