@@ -12,6 +12,7 @@ import {
   type PatientState,
   type ProtocolResult,
   type ReadinessGraph,
+  type RequirementStatus,
   type ToolExecution,
   type WorkflowEvent,
 } from "./models";
@@ -40,6 +41,24 @@ export interface ActivityEntry {
   detail?: string;
 }
 
+/** A single healthcare touchpoint in time — the unit of the vertical
+ * timeline view. Captured once per settled event. */
+export interface InteractionNode {
+  id: string;
+  title: string;
+  status: RequirementStatus;
+}
+export interface Interaction {
+  id: string;
+  seq: number;
+  title: string;
+  detail?: string;
+  day: number; // days since referral (point 0)
+  nodes: InteractionNode[]; // full graph state at this point
+  added: string[]; // node ids that first appeared here
+  changed: string[]; // node ids whose status changed here
+}
+
 export interface Snapshot {
   started: boolean;
   caseId: "A" | "B";
@@ -47,12 +66,25 @@ export interface Snapshot {
   protocol: ProtocolResult | null;
   graph: ReadinessGraph | null;
   graphHistory: ReadinessGraph[];
+  interactions: Interaction[];
   timeline: ActivityEntry[];
   toolLog: ToolExecution[];
   agentLog: AgentDecision[];
   providerName: string;
   processing: boolean;
 }
+
+/** Synthetic elapsed-days added per touchpoint so the timeline reads as a real
+ * journey (the demo's clock is otherwise fixed). */
+const DAY_DELTA: Record<string, number> = {
+  REFERRAL_RECEIVED: 0,
+  QUESTIONNAIRE_RECEIVED: 3,
+  ORDER_APPROVED: 1,
+  LAB_RESULT_RECEIVED: 4,
+  DOCUMENT_RECEIVED: 6,
+  CLINICIAN_DECISION: 2,
+  READY_TO_SCHEDULE: 0,
+};
 
 const EVENT_TITLES: Record<string, string> = {
   REFERRAL_RECEIVED: "Referral received",
@@ -73,6 +105,8 @@ export class Case {
   private state: PatientState | null = null;
   private protocol: ProtocolResult | null = null;
   private graphHistory: ReadinessGraph[] = [];
+  private interactions: Interaction[] = [];
+  private dayCursor = 0;
   private events: WorkflowEvent[] = [];
   private timeline: ActivityEntry[] = [];
   private toolLog: ToolExecution[] = [];
@@ -110,6 +144,7 @@ export class Case {
       protocol: this.protocol,
       graph: this.graphHistory.at(-1) ?? null,
       graphHistory: this.graphHistory,
+      interactions: this.interactions,
       timeline: this.timeline,
       toolLog: this.toolLog,
       agentLog: this.agentLog,
@@ -140,6 +175,8 @@ export class Case {
     this.state = null;
     this.protocol = null;
     this.graphHistory = [];
+    this.interactions = [];
+    this.dayCursor = 0;
     this.events = [];
     this.timeline = [];
     this.toolLog = [];
@@ -198,8 +235,43 @@ export class Case {
     this.processing = true;
     this.commit();
     await this.runLoop(event.type);
+    this.captureInteraction(event);
     this.processing = false;
     this.commit();
+  }
+
+  /** Snapshot the settled graph state as a timeline touchpoint. */
+  private captureInteraction(event: WorkflowEvent) {
+    const graph = this.graphHistory.at(-1);
+    if (!graph) return;
+    this.dayCursor += DAY_DELTA[event.type] ?? 2;
+
+    const prev = this.interactions.at(-1);
+    const prevById = new Map(prev?.nodes.map((n) => [n.id, n.status]) ?? []);
+    const added: string[] = [];
+    const changed: string[] = [];
+    for (const n of graph.nodes) {
+      if (!prevById.has(n.id)) added.push(n.id);
+      else if (prevById.get(n.id) !== n.status) changed.push(n.id);
+    }
+
+    this.interactions = [
+      ...this.interactions,
+      {
+        id: `it-${this.interactions.length}`,
+        seq: this.interactions.length,
+        title: EVENT_TITLES[event.type] ?? event.type,
+        detail: this.eventDetail(event),
+        day: this.dayCursor,
+        nodes: graph.nodes.map((n) => ({
+          id: n.id,
+          title: n.title,
+          status: n.status,
+        })),
+        added,
+        changed,
+      },
+    ];
   }
 
   private eventDetail(event: WorkflowEvent): string | undefined {

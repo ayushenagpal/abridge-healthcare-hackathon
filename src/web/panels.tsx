@@ -1,6 +1,6 @@
 import type { PatientState, ProtocolResult } from "../core/models";
-import type { ActivityEntry, Snapshot } from "../core/store";
-import { LEGEND } from "./status";
+import type { ActivityEntry, Interaction, Snapshot } from "../core/store";
+import { LEGEND, STATUS_LABEL, STATUS_TONE } from "./status";
 
 // ---------------------------------------------------------------------------
 // Status legend + live "what's happening now" bar — the two affordances that
@@ -18,6 +18,17 @@ export function StatusLegend() {
       <div className="lg-row crit">
         <span className="sw" />
         On critical path
+      </div>
+      <div className="lg-h" style={{ marginTop: 9 }}>
+        Lines = dependencies
+      </div>
+      <div className="lg-row">
+        <span className="lg-edge" />
+        A&nbsp;→&nbsp;B: B needs A first
+      </div>
+      <div className="lg-row">
+        <span className="lg-edge crit" />
+        Teal = critical path
       </div>
     </div>
   );
@@ -46,6 +57,91 @@ export function GraphStatusBar({ snapshot }: { snapshot: Snapshot }) {
       <span className="count">
         {open} open requirement{open === 1 ? "" : "s"}
       </span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TIMELINE VIEW — the readiness process as a patient journey through time.
+// Point 0 = referral; every subsequent healthcare touchpoint is timestamped
+// (Day N) and shows ONLY what changed at that touchpoint (new/updated
+// requirements), ending with the final readiness packet once complete.
+export function TimelineView({
+  interactions,
+  protocol,
+  state,
+}: {
+  interactions: Interaction[];
+  protocol: ProtocolResult | null;
+  state: PatientState | null;
+}) {
+  if (interactions.length === 0)
+    return (
+      <div className="empty" style={{ marginTop: 80 }}>
+        No touchpoints yet. Click <b>Start Referral</b> — that is point 0 in the
+        patient's journey.
+      </div>
+    );
+  const ready = protocol?.pathwayStatus === "ready-to-schedule";
+  return (
+    <div className="tv scroll" style={{ flex: 1 }}>
+      {interactions.map((it, i) => {
+        // Only show what actually changed at this touchpoint — not the whole board.
+        const shown = it.nodes.filter(
+          (n) => it.added.includes(n.id) || it.changed.includes(n.id),
+        );
+        const isLast = i === interactions.length - 1;
+        return (
+          <div className="tv-row" key={it.id}>
+            <div className="tv-axis">
+              <div className="tv-day">
+                <span className="tv-daynum">Day {it.day}</span>
+                <span className="tv-t">T{it.seq}</span>
+              </div>
+              <div className="tv-dot" />
+              {(!isLast || ready) && <div className="tv-rail" />}
+            </div>
+            <div className="tv-content">
+              <div className="tv-title">{it.title}</div>
+              {it.detail && <div className="tv-detail">{it.detail}</div>}
+              <div className="tv-chips">
+                {shown.length === 0 && (
+                  <span className="tv-nochange">No change to readiness</span>
+                )}
+                {shown.map((n) => {
+                  const tone = STATUS_TONE[n.status];
+                  const isNew = it.added.includes(n.id);
+                  return (
+                    <span
+                      key={n.id}
+                      className={`tv-chip tone-${tone} active`}
+                      title={`${n.title} — ${STATUS_LABEL[n.status]}`}
+                    >
+                      {tone === "done" && "✓ "}
+                      {n.title}
+                      <span className="tv-new">{isNew ? "new" : "updated"}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {ready && (
+        <div className="tv-row">
+          <div className="tv-axis">
+            <div className="tv-day">
+              <span className="tv-daynum tone-done">✓</span>
+            </div>
+            <div className="tv-dot" style={{ background: "var(--done)" }} />
+          </div>
+          <div className="tv-content">
+            <FinalPacket protocol={protocol} state={state} inline />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -272,9 +368,11 @@ export function ApprovalQueue({
 export function FinalPacket({
   protocol,
   state,
+  inline,
 }: {
   protocol: ProtocolResult | null;
   state: PatientState | null;
+  inline?: boolean;
 }) {
   if (!protocol || protocol.pathwayStatus !== "ready-to-schedule" || !state)
     return null;
@@ -296,7 +394,7 @@ export function FinalPacket({
 
   if (isLowRisk) {
     return (
-      <div className="packet">
+      <div className={`packet${inline ? " inline" : ""}`}>
         <h3>✓ Final Readiness Packet</h3>
         <div className="cm" style={{ marginBottom: 8 }}>
           Operational requirements complete — {state.demographics.name}, {state.referral.procedure.text}.
@@ -329,7 +427,7 @@ export function FinalPacket({
   }
 
   return (
-    <div className="packet">
+    <div className={`packet${inline ? " inline" : ""}`}>
       <h3>✓ Final Readiness Packet</h3>
       <div className="cm" style={{ marginBottom: 8 }}>
         Operational requirements complete — {state.demographics.name},{" "}

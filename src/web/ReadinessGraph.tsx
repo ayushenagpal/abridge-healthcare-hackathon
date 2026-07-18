@@ -56,15 +56,22 @@ function layout(graph: Graph): { nodes: Node[]; edges: Edge[] } {
     byDepth.get(d)!.push(n.id);
   }
 
+  // Column & row spacing sized to the node box (172w × ~92h) with generous
+  // gaps so dense cases (dual pulmonary + cardiac spines) never overlap.
+  const COL = 250;
+  const ROW = 150;
+  const maxRows = Math.max(...[...byDepth.values()].map((c) => c.length), 1);
   const critical = new Set(graph.criticalPath);
   const nodes: Node[] = graph.nodes.map((req) => {
     const d = depth(req.id);
     const col = byDepth.get(d)!;
     const row = col.indexOf(req.id);
+    // vertically center each column's stack so the layout reads as balanced
+    const yOffset = ((maxRows - col.length) * ROW) / 2;
     return {
       id: req.id,
       type: "status",
-      position: { x: d * 232, y: row * 96 },
+      position: { x: d * COL, y: yOffset + row * ROW },
       data: { req, critical: critical.has(req.id) },
       draggable: true,
     };
