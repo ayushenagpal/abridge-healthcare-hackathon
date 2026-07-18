@@ -327,11 +327,18 @@ export interface PatientState {
     medicationTimelineApproved: boolean;
     finalApproved: boolean;
     readyMarked: boolean;
-    // Pulmonary pathway (Case A)
+    // Pulmonary pathway (lobectomy only)
     pftResultReceived: boolean;
     perfusionScanResultReceived: boolean;
     cpetResultReceived: boolean;
     mdtReviewApproved: boolean;
+    // ARISCAT optimization bundle — Tier 1 (auto-execute)
+    pulmOptIncentiveSpiro: boolean;
+    pulmOptInhalerChecked: boolean;
+    pulmOptChestPt: boolean;
+    // ARISCAT optimization bundle — Tier 2 (draft → clinician approval)
+    pulmOptSmokingCessationDrafted: boolean;
+    pulmOptPrehabDrafted: boolean;
   };
 }
 
@@ -348,6 +355,11 @@ export const EMPTY_OPS: PatientState["ops"] = {
   perfusionScanResultReceived: false,
   cpetResultReceived: false,
   mdtReviewApproved: false,
+  pulmOptIncentiveSpiro: false,
+  pulmOptInhalerChecked: false,
+  pulmOptChestPt: false,
+  pulmOptSmokingCessationDrafted: false,
+  pulmOptPrehabDrafted: false,
 };
 
 // ---------------------------------------------------------------------------

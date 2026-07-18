@@ -125,6 +125,79 @@ export function computeCandidates(
     });
   }
 
+  // ARISCAT optimization bundle — Tier 1 (auto-execute, no approval needed)
+  const spiro = req(protocol, "pulm-opt-incentive-spirometry");
+  if (spiro?.status === "missing") {
+    candidates.push({
+      tool: "performOptimization",
+      args: { requirementId: "pulm-opt-incentive-spirometry", optimizationType: "incentive-spirometry" },
+      requirementId: "pulm-opt-incentive-spirometry",
+      label: "Provide incentive spirometry education",
+      rationale: "ARISCAT high risk: instruct patient in incentive spirometry technique and prescribe for post-op use (Tier 1 — no approval needed)",
+      cost: 2,
+      tier: 1,
+    });
+  }
+
+  const inhaler = req(protocol, "pulm-opt-inhaler-optimization");
+  if (inhaler?.status === "searching" || inhaler?.status === "missing") {
+    candidates.push({
+      tool: "performOptimization",
+      args: { requirementId: "pulm-opt-inhaler-optimization", optimizationType: "inhaler-optimization" },
+      requirementId: "pulm-opt-inhaler-optimization",
+      label: "Review and optimize inhaler regimen",
+      rationale: "ARISCAT high risk: search chart for current LAMA/LABA/ICS regimen, confirm maximal therapy, note technique assessment needed (Tier 1)",
+      cost: 2,
+      tier: 1,
+    });
+  }
+
+  const chestPt = req(protocol, "pulm-opt-chest-pt");
+  if (chestPt?.status === "missing") {
+    candidates.push({
+      tool: "performOptimization",
+      args: { requirementId: "pulm-opt-chest-pt", optimizationType: "chest-pt" },
+      requirementId: "pulm-opt-chest-pt",
+      label: "Instruct in breathing exercises and chest physiotherapy",
+      rationale: "ARISCAT high risk: provide diaphragmatic breathing, cough technique, and early mobilization instruction (Tier 1)",
+      cost: 2,
+      tier: 1,
+    });
+  }
+
+  // ARISCAT optimization bundle — Tier 2 (draft referral → clinician approval)
+  const smokingCessation = req(protocol, "pulm-opt-smoking-cessation");
+  if (
+    smokingCessation?.status === "missing" &&
+    !hasReview(state, (r) => r.subject === "referral" && r.requirementId === "pulm-opt-smoking-cessation")
+  ) {
+    candidates.push({
+      tool: "draftReferral",
+      args: { requirementId: "pulm-opt-smoking-cessation", specialty: "Smoking Cessation Program" },
+      requirementId: "pulm-opt-smoking-cessation",
+      label: "Draft smoking cessation referral",
+      rationale: "ARISCAT high risk + current smoker: draft referral to cessation program — even brief preoperative cessation reduces pulmonary complications (Tier 2, needs approval)",
+      cost: 4,
+      tier: 2,
+    });
+  }
+
+  const prehab = req(protocol, "pulm-opt-prehabilitation");
+  if (
+    prehab?.status === "missing" &&
+    !hasReview(state, (r) => r.subject === "referral" && r.requirementId === "pulm-opt-prehabilitation")
+  ) {
+    candidates.push({
+      tool: "draftReferral",
+      args: { requirementId: "pulm-opt-prehabilitation", specialty: "Prehabilitation" },
+      requirementId: "pulm-opt-prehabilitation",
+      label: "Draft prehabilitation referral",
+      rationale: "ARISCAT high risk (≥45): structured prehabilitation improves functional reserve. Draft referral for clinician approval (Tier 2)",
+      cost: 5,
+      tier: 2,
+    });
+  }
+
   const ready = req(protocol, "ready-to-schedule");
   if (ready?.status === "waiting-clinician") {
     if (!hasReview(state, (r) => r.subject === "final")) {

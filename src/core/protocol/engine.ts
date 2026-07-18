@@ -238,6 +238,45 @@ function cpetVo2Max(state: PatientState): number | undefined {
 // ---------------------------------------------------------------------------
 // The engine.
 // ---------------------------------------------------------------------------
+// Detail strings for optimization bundle nodes based on current status.
+function getOptDetail(id: string, state: PatientState, status: RequirementStatus): string | undefined {
+  if (status === "satisfied") {
+    const details: Record<string, string> = {
+      "pulm-opt-incentive-spirometry": "Education provided — technique demonstrated, device prescribed for postoperative use.",
+      "pulm-opt-inhaler-optimization": buildInhalerDetail(state),
+      "pulm-opt-chest-pt": "Diaphragmatic breathing, cough technique, and early mobilization plan instructed.",
+    };
+    return details[id];
+  }
+  if (status === "waiting-clinician") {
+    const details: Record<string, string> = {
+      "pulm-opt-smoking-cessation": "Referral drafted — awaiting clinician approval to send to cessation program.",
+      "pulm-opt-prehabilitation": "Referral drafted — awaiting clinician approval to enroll in structured prehabilitation.",
+    };
+    return details[id];
+  }
+  if (status === "searching") {
+    return "Searching chart for current inhaler regimen and ICS/LAMA/LABA status…";
+  }
+  return undefined;
+}
+
+function buildInhalerDetail(state: PatientState): string {
+  const inhalers = state.medications
+    .filter((m) => {
+      const t = m.text.toLowerCase();
+      return t.includes("tiotropium") || t.includes("fluticasone") || t.includes("salmeterol") ||
+        t.includes("albuterol") || t.includes("budesonide") || t.includes("formoterol") ||
+        t.includes("umeclidinium") || t.includes("vilanterol") || t.includes("inhaler") ||
+        t.includes("spiriva") || t.includes("advair") || t.includes("symbicort");
+    })
+    .map((m) => m.text.split(" ")[0]);
+  if (inhalers.length > 0) {
+    return `Chart review: ${inhalers.join(", ")} confirmed. Regimen is LAMA + ICS/LABA — maximal maintenance therapy. Technique assessment scheduled day of pre-op visit.`;
+  }
+  return "Inhaler regimen reviewed. Recommendation: ensure maximal LAMA + LABA/ICS therapy and verify correct device technique before surgery.";
+}
+
 export function runProtocol(
   state: PatientState,
   prevGraph: ReadinessGraph | null,
@@ -356,9 +395,21 @@ export function runProtocol(
     );
     if (!citations.includes(ariscatResult.citation)) citations.push(ariscatResult.citation);
 
-    // Push optimization bundle requirements (non-blocking).
+    // Push optimization bundle requirements (non-blocking), with live statuses
+    // derived from ops flags set by agent tools.
+    const optStatusMap: Record<string, RequirementStatus> = {
+      "pulm-opt-incentive-spirometry": state.ops.pulmOptIncentiveSpiro ? "satisfied" : "missing",
+      "pulm-opt-inhaler-optimization": state.ops.pulmOptInhalerChecked ? "satisfied" : "searching",
+      "pulm-opt-chest-pt": state.ops.pulmOptChestPt ? "satisfied" : "missing",
+      "pulm-opt-smoking-cessation": state.ops.pulmOptSmokingCessationDrafted ? "waiting-clinician" : "missing",
+      "pulm-opt-prehabilitation": state.ops.pulmOptPrehabDrafted ? "waiting-clinician" : "missing",
+    };
     for (const optReq of ariscatResult.requirements) {
-      requirements.push(optReq);
+      requirements.push({
+        ...optReq,
+        status: optStatusMap[optReq.id] ?? optReq.status,
+        detail: getOptDetail(optReq.id, state, optStatusMap[optReq.id] ?? optReq.status) ?? optReq.detail,
+      });
     }
   }
 

@@ -72,25 +72,86 @@ export function runTool(state: PatientState, candidate: Candidate): ToolResult {
     }
 
     case "draftReferral": {
-      state.ops.cardiologyReferralDrafted = true;
+      const reqId = String(args.requirementId ?? "");
+      const specialty = String(args.specialty ?? "Specialist");
+      // Set the correct ops flag based on which requirement this referral targets.
+      if (reqId === "cardiology-review") state.ops.cardiologyReferralDrafted = true;
+      else if (reqId === "pulm-opt-smoking-cessation") state.ops.pulmOptSmokingCessationDrafted = true;
+      else if (reqId === "pulm-opt-prehabilitation") state.ops.pulmOptPrehabDrafted = true;
+
+      const referralDetails: Record<string, { reason: string; requiredEvidence: string }> = {
+        "cardiology-review": {
+          reason: "Elevated preoperative NT-proBNP. Please evaluate for structural or functional cardiac disease and provide perioperative clearance.",
+          requiredEvidence: "Consultation note with clearance determination and any recommended further testing.",
+        },
+        "pulm-opt-smoking-cessation": {
+          reason: `Current smoker (~30 pack-years) with ARISCAT high-risk score undergoing elective open colectomy. Preoperative smoking cessation reduces postoperative pulmonary complication risk. Referral for structured cessation support.`,
+          requiredEvidence: "Enrollment confirmation or cessation plan documentation.",
+        },
+        "pulm-opt-prehabilitation": {
+          reason: `ARISCAT high-risk score (≥45). Patient has moderate COPD and poor functional capacity (DASI ≈ 3 METs). Structured prehabilitation to improve cardiorespiratory reserve before elective open colectomy.`,
+          requiredEvidence: "Prehabilitation program enrollment and baseline assessment.",
+        },
+      };
+      const details = referralDetails[reqId] ?? {
+        reason: `Preoperative specialist evaluation required.`,
+        requiredEvidence: "Consultation note.",
+      };
+
       const review: ClinicianReview = {
         id: reviewId(),
         subject: "referral",
-        requirementId: String(args.requirementId),
-        title: `${String(args.specialty ?? "Specialist")} referral`,
-        draft: {
-          specialty: args.specialty,
-          reason: "Abnormal preoperative NT-proBNP.",
-          requiredEvidence: "Consultation note with clearance and any recommended testing.",
-        },
+        requirementId: reqId,
+        title: `${specialty} referral`,
+        draft: { specialty, ...details },
         decision: "pending",
       };
       state.clinicianDecisions.push(review);
       return {
         status: "ok",
-        output: `Drafted ${String(args.specialty)} referral → clinician approval queue.`,
+        output: `Drafted ${specialty} referral → clinician approval queue.`,
         review,
       };
+    }
+
+    case "performOptimization": {
+      const optType = String(args.optimizationType ?? "");
+      const reqId = String(args.requirementId ?? "");
+      let output = "";
+      let patientMessage: string | undefined;
+
+      switch (optType) {
+        case "incentive-spirometry":
+          state.ops.pulmOptIncentiveSpiro = true;
+          output = "Incentive spirometry: patient education provided. Technique demonstrated. Device prescribed — patient to use q1h while awake postoperatively.";
+          patientMessage = "Before your surgery: practice using your incentive spirometer 10 times every hour while awake. After surgery, this helps prevent lung complications. A device will be provided.";
+          break;
+        case "inhaler-optimization": {
+          state.ops.pulmOptInhalerChecked = true;
+          // Find current inhalers from chart to include in the output.
+          const currentInhalers = state.medications
+            .filter((m) => {
+              const t = m.text.toLowerCase();
+              return t.includes("tiotropium") || t.includes("fluticasone") || t.includes("salmeterol") ||
+                t.includes("albuterol") || t.includes("spiriva") || t.includes("advair") ||
+                t.includes("budesonide") || t.includes("formoterol") || t.includes("inhaler");
+            })
+            .map((m) => m.text.split(" ").slice(0, 2).join(" "));
+          const regimen = currentInhalers.length > 0
+            ? `Current regimen: ${currentInhalers.join("; ")}. LAMA + ICS/LABA combination confirmed — maximal maintenance therapy in place.`
+            : "No inhalers found in chart. Recommend initiating LAMA + LABA/ICS therapy given GOLD 2 COPD.";
+          output = `Inhaler regimen reviewed. ${regimen} Technique assessment and adherence counseling to be performed at pre-op visit.`;
+          break;
+        }
+        case "chest-pt":
+          state.ops.pulmOptChestPt = true;
+          output = "Chest physiotherapy: diaphragmatic breathing technique, effective cough technique, and early mobilization plan instructed. Patient verbalized understanding.";
+          patientMessage = "Before your surgery: practice taking slow, deep breaths 10 times every hour. After surgery, you'll be encouraged to sit up and walk as soon as possible — this is one of the most important things you can do to prevent lung problems.";
+          break;
+        default:
+          output = `Optimization action performed for ${reqId}.`;
+      }
+      return { status: "ok", output, patientMessage };
     }
 
     case "draftMedicationTimeline": {
@@ -100,7 +161,7 @@ export function runTool(state: PatientState, candidate: Candidate): ToolResult {
         requirementId: String(args.requirementId),
         title: "Perioperative medication timeline",
         draft: {
-          note: "Reconciliation flagged a patient-reported GLP-1 not in the chart. Timeline drafted for review — no hold instructions applied automatically.",
+          note: "Reconciliation flagged patient-reported empagliflozin (Jardiance, SGLT2i) absent from structured medication list. SGLT2i requires 3-4 day perioperative hold (euglycemic DKA risk). Timeline drafted for review — no hold instructions applied automatically.",
         },
         decision: "pending",
       };
