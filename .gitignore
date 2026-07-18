@@ -12,3 +12,6 @@ dist/
 
 # Reference material (not for distribution)
 docs/reference/thompson-et-al-2024-2024-aha-acc-acs-asnc-hrs-sca-scct-scmr-svm-guideline-for-perioperative-cardiovascular-management.pdf
+
+# TS build info
+*.tsbuildinfo
