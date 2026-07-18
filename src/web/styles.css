@@ -261,6 +261,7 @@ body {
 .tv-dot { position: absolute; right: -20px; top: 3px; width: 12px; height: 12px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 0 4px var(--paper), 0 0 0 5px var(--accent-soft); }
 .tv-rail { position: absolute; right: -15px; top: 16px; bottom: -14px; width: 2px; background: var(--hair); }
 .tv-content { padding-bottom: 22px; padding-left: 8px; animation: tlIn 0.4s ease both; }
+.tv-stage { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: var(--accent); margin-bottom: 2px; }
 .tv-title { font-weight: 700; letter-spacing: -0.01em; }
 .tv-detail { color: var(--muted); font-size: 11px; margin-top: 1px; }
 .tv-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }

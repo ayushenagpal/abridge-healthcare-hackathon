@@ -1,4 +1,8 @@
-import type { PatientState, ProtocolResult } from "../core/models";
+import type {
+  PatientState,
+  ProtocolResult,
+  RequirementStatus,
+} from "../core/models";
 import type { ActivityEntry, Interaction, Snapshot } from "../core/store";
 import { LEGEND, STATUS_LABEL, STATUS_TONE } from "./status";
 
@@ -83,51 +87,106 @@ export function TimelineView({
       </div>
     );
   const ready = protocol?.pathwayStatus === "ready-to-schedule";
+  const isAnalysis = (s: string) => s === "satisfied" || s === "not-indicated";
+
+  type Chip = { id: string; title: string; status: RequirementStatus; badge?: string };
+  type Row = {
+    key: string;
+    day: number;
+    stageTag?: string;
+    title: string;
+    detail?: string;
+    chips: Chip[];
+    empty?: string;
+  };
+
+  const rows: Row[] = [];
+  const [first, ...rest] = interactions;
+
+  // First touchpoint is split into two stages: what we already know vs the
+  // workup the analysis says is needed.
+  if (first) {
+    const relevant = first.nodes.filter((n) => n.id !== "ready-to-schedule");
+    const known = relevant.filter((n) => isAnalysis(n.status));
+    const needed = relevant.filter((n) => !isAnalysis(n.status));
+    rows.push({
+      key: "intake",
+      day: first.day,
+      stageTag: "Stage 1 · Intake",
+      title: "What we know",
+      detail: "Deterministic assessment of the referral and existing chart data",
+      chips: known.map((n) => ({ ...n, badge: "known" })),
+      empty: "No prior assessments",
+    });
+    rows.push({
+      key: "analysis",
+      day: first.day,
+      stageTag: "Stage 2 · Protocol analysis",
+      title: "Required workup",
+      detail: "Tests, referrals, and questionnaires the analysis determined are needed",
+      chips: needed.map((n) => ({ ...n, badge: "needed" })),
+      empty: "No further workup indicated",
+    });
+  }
+
+  // Subsequent touchpoints: only what changed at each.
+  for (const it of rest) {
+    const shown = it.nodes.filter(
+      (n) => it.added.includes(n.id) || it.changed.includes(n.id),
+    );
+    rows.push({
+      key: it.id,
+      day: it.day,
+      title: it.title,
+      detail: it.detail,
+      chips: shown.map((n) => ({
+        ...n,
+        badge: it.added.includes(n.id) ? "new" : "updated",
+      })),
+      empty: "No change to readiness",
+    });
+  }
+
   return (
     <div className="tv scroll" style={{ flex: 1 }}>
-      {interactions.map((it, i) => {
-        // Only show what actually changed at this touchpoint — not the whole board.
-        const shown = it.nodes.filter(
-          (n) => it.added.includes(n.id) || it.changed.includes(n.id),
-        );
-        const isLast = i === interactions.length - 1;
-        return (
-          <div className="tv-row" key={it.id}>
-            <div className="tv-axis">
-              <div className="tv-day">
-                <span className="tv-daynum">Day {it.day}</span>
-                <span className="tv-t">T{it.seq}</span>
-              </div>
-              <div className="tv-dot" />
-              {(!isLast || ready) && <div className="tv-rail" />}
+      {rows.map((row, i) => (
+        <div className="tv-row" key={row.key}>
+          <div className="tv-axis">
+            <div className="tv-day">
+              <span className="tv-daynum">Day {row.day}</span>
+              <span className="tv-t">Step {i + 1}</span>
             </div>
-            <div className="tv-content">
-              <div className="tv-title">{it.title}</div>
-              {it.detail && <div className="tv-detail">{it.detail}</div>}
-              <div className="tv-chips">
-                {shown.length === 0 && (
-                  <span className="tv-nochange">No change to readiness</span>
-                )}
-                {shown.map((n) => {
-                  const tone = STATUS_TONE[n.status];
-                  const isNew = it.added.includes(n.id);
-                  return (
-                    <span
-                      key={n.id}
-                      className={`tv-chip tone-${tone} active`}
-                      title={`${n.title} — ${STATUS_LABEL[n.status]}`}
-                    >
-                      {tone === "done" && "✓ "}
-                      {n.title}
-                      <span className="tv-new">{isNew ? "new" : "updated"}</span>
-                    </span>
-                  );
-                })}
-              </div>
+            <div className="tv-dot" />
+            {(i < rows.length - 1 || ready) && <div className="tv-rail" />}
+          </div>
+          <div className="tv-content">
+            {row.stageTag && <div className="tv-stage">{row.stageTag}</div>}
+            <div className="tv-title">{row.title}</div>
+            {row.detail && <div className="tv-detail">{row.detail}</div>}
+            <div className="tv-chips">
+              {row.chips.length === 0 && (
+                <span className="tv-nochange">{row.empty}</span>
+              )}
+              {row.chips.map((n) => {
+                const tone = STATUS_TONE[n.status];
+                return (
+                  <span
+                    key={n.id}
+                    className={`tv-chip tone-${tone} active`}
+                    title={`${n.title} — ${STATUS_LABEL[n.status]}`}
+                  >
+                    {tone === "done" && "✓ "}
+                    {n.title}
+                    {n.badge && n.badge !== "known" && (
+                      <span className="tv-new">{n.badge}</span>
+                    )}
+                  </span>
+                );
+              })}
             </div>
           </div>
-        );
-      })}
+        </div>
+      ))}
 
       {ready && (
         <div className="tv-row">
