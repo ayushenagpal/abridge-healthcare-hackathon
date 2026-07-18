@@ -25,8 +25,11 @@ import type {
 import { buildGraph, diffGraph, isResolved } from "../graph";
 import type { ReadinessGraph } from "../models";
 import { CITATIONS } from "./citations";
+import { evaluateAriscat, type AriscatInputs } from "./ariscat";
 
-const NTPROBNP_THRESHOLD = 125;
+// AHA/ACC 2024 perioperative guideline threshold: NT-proBNP ≥300 pg/mL
+// is associated with elevated perioperative cardiac risk.
+const NTPROBNP_THRESHOLD = 300;
 const DASI_METS_THRESHOLD = 4;
 const PPO_THRESHOLD = 40; // % predicted — below triggers perfusion scan / CPET
 
@@ -66,9 +69,13 @@ type SurgeryClass = {
 
 function classifySurgery(state: PatientState): SurgeryClass {
   const text = state.referral.procedure.text.toLowerCase();
-  if (text.includes("lobectomy") || text.includes("thoracic") || text.includes("pneumonectomy"))
+  if (text.includes("lobectomy") || text.includes("pneumonectomy") || (text.includes("thoracic") && !text.includes("intrathoracic")))
     return { risk: "elevated", category: "intrathoracic" };
-  if (text.includes("colectomy") || text.includes("colon") || text.includes("bowel") || text.includes("laparoscopic"))
+  if (
+    text.includes("colectomy") || text.includes("colon") || text.includes("bowel") ||
+    text.includes("laparotomy") || text.includes("gastrectomy") || text.includes("hepat") ||
+    text.includes("pancreat") || text.includes("whipple") || text.includes("lap")
+  )
     return { risk: "elevated", category: "intraperitoneal" };
   if (text.includes("arthroscop") || text.includes("meniscus") || text.includes("knee") || text.includes("shoulder"))
     return { risk: "low", category: "extremity" };
@@ -79,7 +86,7 @@ function classifySurgery(state: PatientState): SurgeryClass {
 // Stage 3 — RCRI (deterministic, provenance retained).
 // ---------------------------------------------------------------------------
 function computeRcri(state: PatientState, highRiskSurgery: boolean): RcriResult {
-  const ihd = activeCondition(state, ["ischemic heart disease", "coronary"]);
+  const ihd = activeCondition(state, ["ischemic heart disease", "coronary", "atherosclerotic heart", "myocardial infarction", "prior mi", "angina"]);
   const chf = activeCondition(state, ["heart failure", "congestive"]);
   const cva = activeCondition(state, ["cerebrovascular", "stroke", "transient ischemic"]);
   const cr = latestObservation(
@@ -169,7 +176,41 @@ function medicationDiscrepancy(state: PatientState) {
 }
 
 // ---------------------------------------------------------------------------
-// Pulmonary observation lookups (Case A).
+// ARISCAT input extraction from patient state.
+// ---------------------------------------------------------------------------
+function extractAriscatInputs(state: PatientState): AriscatInputs {
+  const spo2Obs = latestObservation(state, (t) => t.includes("spo2") || t.includes("oxygen saturation") || t.includes("pulse ox"));
+  const hbObs = latestObservation(state, (t) => t.includes("hemoglobin") && !t.includes("glyco"));
+  const recentRespInfection = state.conditions.some((c) => {
+    const t = c.text.toLowerCase();
+    return (
+      c.clinicalStatus !== "resolved" &&
+      (t.includes("bronchitis") || t.includes("pneumonia") || t.includes("respiratory infection") || t.includes("upper respiratory") || t.includes("sinusitis"))
+    );
+  });
+  return {
+    ageYears: state.demographics.ageYears,
+    spo2Percent: spo2Obs?.value ?? undefined,
+    recentRespiratoryInfection: recentRespInfection,
+    hemoglobin_g_dl: hbObs?.value ?? undefined,
+    upperAbdominalOrIntrathoracicIncision: state.referral.upperAbdominal ?? false,
+    surgeryDurationBucket: state.referral.surgeryDurationBucket,
+    isEmergency: state.referral.urgency === "emergency",
+  };
+}
+
+function hasPulmonaryComorbidity(state: PatientState): boolean {
+  return state.conditions.some((c) => {
+    const t = c.text.toLowerCase();
+    return (
+      c.clinicalStatus !== "resolved" &&
+      (t.includes("copd") || t.includes("asthma") || t.includes("pulmonary") || t.includes("emphysema") || t.includes("bronchitis"))
+    );
+  }) || state.conditions.some((c) => c.text.toLowerCase().includes("smok"));
+}
+
+// ---------------------------------------------------------------------------
+// Pulmonary observation lookups (resection pathway).
 // ---------------------------------------------------------------------------
 function pftFev1Predicted(state: PatientState): number | undefined {
   const obs = latestObservation(state, (t) => t.includes("fev1") && t.includes("predicted"));
@@ -284,8 +325,45 @@ export function runProtocol(
   });
   note("rcri", `RCRI = ${rcri.score} (${rcri.components.filter((c) => c.present).map((c) => c.label).join(", ") || "no predictors"}).`, CITATIONS.rcri, rcri.components.filter((c) => c.present && c.provenance).map((c) => c.provenance!));
 
-  // === PULMONARY SPINE (intrathoracic surgery only) ===
-  if (surgery.category === "intrathoracic") {
+  // === ARISCAT — non-resection pulmonary optimization ===
+  // Fires for elevated-risk non-resection surgery when patient has pulmonary
+  // comorbidity. The resection spine (PFT/ppo/CPET) runs separately for
+  // intrathoracic surgery only. ARISCAT fires for intraperitoneal/other.
+  const isLungResection = surgery.category === "intrathoracic";
+  if (!isLungResection && hasPulmonaryComorbidity(state)) {
+    const ariscatInputs = extractAriscatInputs(state);
+    const ariscatResult = evaluateAriscat(ariscatInputs);
+
+    // Add the ARISCAT risk node (always — even for low risk, to show the assessment ran).
+    requirements.push({
+      id: "ariscat-risk",
+      title: `ARISCAT Pulmonary Risk — ${ariscatResult.risk.toUpperCase()}`,
+      detail: `Score ${ariscatResult.score}: ${ariscatResult.components.filter((c) => c.present).map((c) => c.label).join("; ") || "no risk factors"}.`,
+      status: "satisfied", // assessment itself is complete once scored
+      dependencies: ["procedure-classification"],
+      owner: "system",
+      acceptableEvidence: ["ARISCAT score from chart data"],
+      attachedEvidence: [],
+      guidelineReference: ariscatResult.citation,
+      requiresClinicianApproval: false,
+      blocksScheduling: false,
+      generatedByRule: "ariscat",
+    });
+    note(
+      "ariscat",
+      `ARISCAT score ${ariscatResult.score} → ${ariscatResult.risk} risk. ${ariscatResult.risk !== "low" ? "Optimization bundle generated." : "No optimization required."}`,
+      ariscatResult.citation,
+    );
+    if (!citations.includes(ariscatResult.citation)) citations.push(ariscatResult.citation);
+
+    // Push optimization bundle requirements (non-blocking).
+    for (const optReq of ariscatResult.requirements) {
+      requirements.push(optReq);
+    }
+  }
+
+  // === PULMONARY SPINE (intrathoracic / lung resection only) ===
+  if (isLungResection) {
     runPulmonarySpine(state, requirements, determinations, appliedRules, citations, note);
   }
 

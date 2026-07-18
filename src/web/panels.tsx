@@ -379,52 +379,11 @@ export function FinalPacket({
 
   const rcri = state.derived.rcri;
   const dasi = state.questionnaires[0];
-  const isLobectomy = state.referral.procedure.text.toLowerCase().includes("lobectomy");
-  const isLowRisk = state.referral.procedure.text.toLowerCase().includes("arthroscop") ||
-    state.referral.procedure.text.toLowerCase().includes("meniscus");
-
-  // Pulmonary values (Case A)
-  const ppoFev1Obs = state.observations.find((o) => o.text.toLowerCase().includes("ppo fev1") && o.text.includes("anatomic"));
-  const perfusionEv = state.evidence.find((e) => e.kind === "lab" && (e.content as Record<string, unknown>)?.ppoFev1Corrected != null);
-  const cpetEv = state.evidence.find((e) => e.kind === "lab" && (e.content as Record<string, unknown>)?.vo2max != null);
-  const ppoFev1Corrected = perfusionEv ? (perfusionEv.content as Record<string, number>).ppoFev1Corrected : undefined;
-  const ppoDlcoCorrected = perfusionEv ? (perfusionEv.content as Record<string, number>).ppoDlcoCorrected : undefined;
-  const vo2max = cpetEv ? (cpetEv.content as Record<string, number>).vo2max : undefined;
   const ntprobnp = state.observations.find((o) => o.text.toLowerCase().includes("natriuretic"))?.value;
 
-  if (isLowRisk) {
-    return (
-      <div className={`packet${inline ? " inline" : ""}`}>
-        <h3>✓ Final Readiness Packet</h3>
-        <div className="cm" style={{ marginBottom: 8 }}>
-          Operational requirements complete — {state.demographics.name}, {state.referral.procedure.text}.
-        </div>
-        <div className="line">
-          <span className="k">Procedure risk</span>
-          <span>Low (extremity/ambulatory)</span>
-        </div>
-        <div className="line">
-          <span className="k">RCRI</span>
-          <span>0 — no elevated-risk components</span>
-        </div>
-        <div className="line">
-          <span className="k">Functional capacity</span>
-          <span>≥ 10 METs (confirmed from chart)</span>
-        </div>
-        <div className="line">
-          <span className="k">Cardiac testing indicated</span>
-          <span>No — AHA/ACC Class III (Harm)</span>
-        </div>
-        <div className="line">
-          <span className="k">Outstanding issues</span>
-          <span>None</span>
-        </div>
-        <div className="cite" style={{ marginTop: 8 }}>
-          AHA/ACC 2024 Perioperative Guideline — Class III (Harm), LOE B-NR: Routine preoperative cardiac testing not recommended for low-risk surgery.
-        </div>
-      </div>
-    );
-  }
+  // ARISCAT optimization bundle nodes
+  const ariscatNode = protocol.requirements.find((r) => r.id === "ariscat-risk");
+  const optBundle = protocol.requirements.filter((r) => r.id.startsWith("pulm-opt-"));
 
   return (
     <div className={`packet${inline ? " inline" : ""}`}>
@@ -433,60 +392,56 @@ export function FinalPacket({
         Operational requirements complete — {state.demographics.name},{" "}
         {state.referral.procedure.text}.
       </div>
-      {isLobectomy && (
-        <>
-          <div className="line"><span className="k" style={{ color: "#6366f1" }}>── Pulmonary ──</span></div>
-          <div className="line">
-            <span className="k">ppo FEV1 (perfusion-corrected)</span>
-            <span>{ppoFev1Corrected ?? ppoFev1Obs?.value ?? "—"}% predicted</span>
-          </div>
-          <div className="line">
-            <span className="k">ppo DLCO (perfusion-corrected)</span>
-            <span>{ppoDlcoCorrected ?? "—"}% predicted</span>
-          </div>
-          <div className="line">
-            <span className="k">VO₂max (CPET)</span>
-            <span>{vo2max ?? "—"} mL/kg/min — elevated risk (10–20 range)</span>
-          </div>
-          <div className="line">
-            <span className="k">MDT review</span>
-            <span>Complete — proceed with informed consent</span>
-          </div>
-          <div className="line"><span className="k" style={{ color: "#6366f1" }}>── Cardiac ──</span></div>
-        </>
-      )}
+
+      <div className="line"><span className="k" style={{ fontWeight: 700 }}>─ Cardiac</span></div>
       <div className="line">
         <span className="k">RCRI</span>
-        <span>{rcri?.score}</span>
+        <span>{rcri?.score ?? "—"} — elevated cardiac risk</span>
       </div>
       {dasi && (
         <div className="line">
           <span className="k">Functional capacity (DASI)</span>
-          <span>≈ {dasi.metsEstimate} METs</span>
+          <span>score {dasi.score} ≈ {dasi.metsEstimate} METs (poor)</span>
         </div>
       )}
       {ntprobnp && (
         <div className="line">
           <span className="k">NT-proBNP</span>
-          <span>{ntprobnp} pg/mL — elevated; echo normal</span>
-        </div>
-      )}
-      {ntprobnp && (
-        <div className="line">
-          <span className="k">Cardiology</span>
-          <span>Cleared; echocardiogram normal (EF 62%)</span>
+          <span>{ntprobnp} pg/mL (≥300 elevated → echo obtained)</span>
         </div>
       )}
       <div className="line">
-        <span className="k">Medication timeline</span>
-        <span>{state.ops.medicationTimelineApproved ? "Reconciled & approved" : "No medications"}</span>
+        <span className="k">Cardiology e-consult</span>
+        <span>Cleared; echo EF 55%, no structural disease</span>
       </div>
       <div className="line">
+        <span className="k">Medication timeline</span>
+        <span>Reconciled; empagliflozin hold ×3d documented</span>
+      </div>
+
+      {ariscatNode && (
+        <>
+          <div className="line" style={{ marginTop: 6 }}>
+            <span className="k" style={{ fontWeight: 700 }}>─ Pulmonary</span>
+          </div>
+          <div className="line">
+            <span className="k">ARISCAT score</span>
+            <span>{ariscatNode.detail?.match(/Score (\d+)/)?.[1] ?? "—"} — HIGH risk</span>
+          </div>
+          {optBundle.map((r) => (
+            <div key={r.id} className="line">
+              <span className="k">{r.title}</span>
+              <span>{r.requiresClinicianApproval ? "referred" : "instructed"}</span>
+            </div>
+          ))}
+        </>
+      )}
+
+      <div className="line" style={{ marginTop: 6 }}>
         <span className="k">Outstanding issues</span>
         <span>None</span>
       </div>
       <div className="cite" style={{ marginTop: 8 }}>
-        Guideline citations:{" "}
         {protocol.citations.map((c) => c.section).join("; ")}.
       </div>
     </div>

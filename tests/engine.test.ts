@@ -7,82 +7,108 @@ function node(reqs: Requirement[], id: string): Requirement | undefined {
   return reqs.find((r) => r.id === id);
 }
 
-describe("protocol engine", () => {
-  it("is deterministic: identical state -> identical output", () => {
-    const a = runProtocol(buildInitialState("A"), null);
-    const b = runProtocol(buildInitialState("A"), null);
+describe("protocol engine — Frank Delgado, open colectomy", () => {
+  it("is deterministic: identical state produces identical output", () => {
+    const a = runProtocol(buildInitialState(), null);
+    const b = runProtocol(buildInitialState(), null);
     expect(JSON.stringify(a.requirements)).toEqual(JSON.stringify(b.requirements));
     expect(a.pathwayStatus).toEqual(b.pathwayStatus);
   });
 
-  it("Case A — computes RCRI = 1 (intrathoracic surgery only, no IHD)", () => {
-    // Eleanor has COPD, AFib, HTN — but no ischemic heart disease.
-    // RCRI components: high-risk surgery (lobectomy) = 1. All others absent.
-    const r = runProtocol(buildInitialState("A"), null);
+  it("RCRI = 3 (high-risk surgery + IHD + insulin-treated DM)", () => {
+    const r = runProtocol(buildInitialState(), null);
     const rcri = node(r.requirements, "rcri");
-    expect(rcri?.detail).toBe("RCRI = 1");
+    expect(rcri?.detail).toBe("RCRI = 3");
   });
 
-  it("Case A — missing data stays missing (insulin and creatinine absent)", () => {
-    const state = buildInitialState("A");
+  it("missing data stays missing — CHF and CVA absent do not fire", () => {
+    const state = buildInitialState();
     runProtocol(state, null);
     const rcri = state.derived.rcri!;
-    const insulin = rcri.components.find((c) => c.key === "insulin-diabetes");
+    const chf = rcri.components.find((c) => c.key === "chf");
+    const cva = rcri.components.find((c) => c.key === "cva");
     const cr = rcri.components.find((c) => c.key === "creatinine");
-    expect(insulin?.present).toBe(false);
+    expect(chf?.present).toBe(false);
+    expect(cva?.present).toBe(false);
     expect(cr?.present).toBe(false);
-    // Only the high-risk surgery (intrathoracic) fires — RCRI = 1.
-    expect(rcri.score).toBe(1);
+    // Score is 3: high-risk surgery + IHD + insulin DM
+    expect(rcri.score).toBe(3);
   });
 
-  it("Case A — generates initial blockers (PFT, functional-capacity, medication-review)", () => {
-    const r = runProtocol(buildInitialState("A"), null);
-    // Pulmonary spine
-    expect(node(r.requirements, "pft")?.status).toBe("missing");
-    // Cardiac spine
+  it("initial blockers: functional-capacity missing, medication discrepancy flagged", () => {
+    const r = runProtocol(buildInitialState(), null);
     expect(node(r.requirements, "functional-capacity")?.status).toBe("missing");
-    // Medication discrepancy (apixaban) → waiting-clinician immediately
     expect(node(r.requirements, "medication-review")?.status).toBe("waiting-clinician");
-    // No biomarker or cardiology yet
+    // No biomarker or cardiology yet — gated on functional capacity
     expect(node(r.requirements, "biomarker")).toBeUndefined();
     expect(node(r.requirements, "cardiology-review")).toBeUndefined();
     expect(r.pathwayStatus).toBe("in-progress");
   });
 
-  it("Case A — adds biomarker node only after DASI is below threshold", () => {
-    const state = buildInitialState("A");
-    state.questionnaires = [{ type: "DASI", metsEstimate: 3.0 }];
-    const r = runProtocol(state, null);
-    expect(node(r.requirements, "functional-capacity")?.status).toBe("satisfied");
-    expect(node(r.requirements, "biomarker")).toBeDefined();
+  it("ARISCAT fires on referral: HIGH risk (score ≥45) with optimization bundle", () => {
+    const r = runProtocol(buildInitialState(), null);
+    const ariscat = node(r.requirements, "ariscat-risk");
+    expect(ariscat).toBeDefined();
+    expect(ariscat?.status).toBe("satisfied"); // assessment ran
+    expect(ariscat?.title).toContain("HIGH");
+    // Optimization bundle present and non-blocking
+    const bundle = r.requirements.filter((req) => req.id.startsWith("pulm-opt-"));
+    expect(bundle.length).toBeGreaterThanOrEqual(4); // at minimum 4 items
+    expect(bundle.every((b) => b.blocksScheduling === false)).toBe(true);
+    expect(bundle.some((b) => b.id === "pulm-opt-smoking-cessation")).toBe(true);
+    expect(bundle.some((b) => b.id === "pulm-opt-incentive-spirometry")).toBe(true);
   });
 
-  it("Case A — pulmonary spine: perfusion-scan added when ppo < 40%", () => {
-    const state = buildInitialState("A");
-    // Simulate PFT receipt: add ppo observations and set ops flag
-    state.ops.pftResultReceived = true;
+  it("biomarker node appears only after DASI is below threshold", () => {
+    const state = buildInitialState();
+    // Without DASI
+    const r1 = runProtocol(state, null);
+    expect(node(r1.requirements, "biomarker")).toBeUndefined();
+
+    // With DASI ≈ 3 METs (below 4-MET threshold)
+    state.questionnaires = [{ type: "DASI", score: 26, metsEstimate: 3.0 }];
+    state.functionalCapacity = { status: "below", metsEstimate: 3.0 };
+    const r2 = runProtocol(state, r1.graph);
+    expect(node(r2.requirements, "functional-capacity")?.status).toBe("satisfied");
+    expect(node(r2.requirements, "biomarker")).toBeDefined();
+  });
+
+  it("cardiology e-consult appears only after NT-proBNP is elevated (≥300 pg/mL)", () => {
+    const state = buildInitialState();
+    state.questionnaires = [{ type: "DASI", score: 26, metsEstimate: 3.0 }];
+    state.functionalCapacity = { status: "below", metsEstimate: 3.0 };
+    const r1 = runProtocol(state, null);
+    // NT-proBNP below threshold: no cardiology node
     state.observations = [
       ...state.observations,
-      { code: "ppo-fev1", system: "local", text: "ppo FEV1 % predicted (anatomic)", value: 37, unit: "%predicted", effectiveAt: "2026-07-18", provenance: { source: "synthetic", reference: "lab/pft", extractedBy: "manual", verified: true, recordedAt: "2026-07-18" } },
-      { code: "ppo-dlco", system: "local", text: "ppo DLCO % predicted (anatomic)", value: 34, unit: "%predicted", effectiveAt: "2026-07-18", provenance: { source: "synthetic", reference: "lab/pft", extractedBy: "manual", verified: true, recordedAt: "2026-07-18" } },
-      { code: "20150-9", system: "http://loinc.org", text: "FEV1 % predicted", value: 45, unit: "%predicted", effectiveAt: "2026-07-18", provenance: { source: "synthetic", reference: "lab/pft", extractedBy: "manual", verified: true, recordedAt: "2026-07-18" } },
-      { code: "19911-7", system: "http://loinc.org", text: "DLCO % predicted", value: 41, unit: "%predicted", effectiveAt: "2026-07-18", provenance: { source: "synthetic", reference: "lab/pft", extractedBy: "manual", verified: true, recordedAt: "2026-07-18" } },
+      {
+        code: "33762-6",
+        system: "http://loinc.org",
+        text: "Natriuretic peptide.B prohormone N-Terminal",
+        value: 150,
+        unit: "pg/mL",
+        provenance: { source: "synthetic", reference: "lab/test", extractedBy: "manual", verified: true, recordedAt: "2026-07-18" },
+      },
     ];
-    const r = runProtocol(state, null);
-    expect(node(r.requirements, "pft")?.status).toBe("satisfied");
-    expect(node(r.requirements, "perfusion-scan")).toBeDefined();
-    expect(node(r.requirements, "perfusion-scan")?.status).toBe("missing");
-  });
+    const r2 = runProtocol(state, r1.graph);
+    expect(node(r2.requirements, "cardiology-review")).toBeUndefined();
 
-  it("Case B — low-risk procedure resolves immediately with no-testing-indicated", () => {
-    const r = runProtocol(buildInitialState("B"), null);
-    expect(node(r.requirements, "no-testing-indicated")?.status).toBe("satisfied");
-    expect(node(r.requirements, "biomarker")).toBeUndefined();
-    expect(node(r.requirements, "cardiology-review")).toBeUndefined();
-    expect(node(r.requirements, "functional-capacity")).toBeUndefined();
-    // Case B has no medications → medication-review satisfied immediately
-    expect(node(r.requirements, "medication-review")?.status).toBe("satisfied");
-    // Only Final Approval needed
-    expect(node(r.requirements, "ready-to-schedule")?.status).toBe("waiting-clinician");
+    // NT-proBNP at/above threshold (480 pg/mL ≥ 300)
+    state.observations = state.observations.filter((o) => !o.text.includes("Natriuretic"));
+    state.observations = [
+      ...state.observations,
+      {
+        code: "33762-6",
+        system: "http://loinc.org",
+        text: "Natriuretic peptide.B prohormone N-Terminal",
+        value: 480,
+        unit: "pg/mL",
+        provenance: { source: "synthetic", reference: "lab/test", extractedBy: "manual", verified: true, recordedAt: "2026-07-18" },
+      },
+    ];
+    const r3 = runProtocol(state, r2.graph);
+    expect(node(r3.requirements, "cardiology-review")).toBeDefined();
+    // Cardiology node title contains e-consult language
+    expect(node(r3.requirements, "cardiology-review")?.title).toContain("Cardiology");
   });
 });

@@ -1,93 +1,104 @@
 {
   "_meta": {
-    "description": "Synthetic patient data for PreOp Navigator demo cases",
+    "description": "Synthetic patient data for PreOp Navigator demo — single case",
     "provenance": "synthetic",
-    "guidelineVersion": "aha-acc-perioperative-demo-v1",
+    "guidelineVersion": "aha-acc-perioperative-demo-v1 / ariscat-demo-v1",
     "createdAt": "2026-07-18",
-    "cases": ["case-a-eleanor-marsh-lobectomy", "case-b-david-chen-low-risk"]
+    "case": "frank-open-colectomy"
   },
 
   "patients": [
     {
-      "id": "case-a-eleanor-marsh",
+      "id": "case-frank",
       "provenance": "synthetic",
-      "demoRole": "Case A — centerpiece, ~3 minutes",
+      "demoRole": "Single demo case — open colectomy with dual cardiac escalation + pulmonary optimization tracks",
 
       "demographics": {
-        "name": "Eleanor Marsh",
-        "dateOfBirth": "1955-03-14",
-        "ageYears": 71,
-        "sex": "female",
-        "gender": "female",
-        "mrn": "SYNTH-001",
-        "primaryLanguage": "English"
+        "name": "Frank Delgado",
+        "dateOfBirth": "1956-03-10",
+        "ageYears": 70,
+        "sex": "male",
+        "gender": "male",
+        "mrn": "SYNTH-FRANK-001"
       },
 
       "referral": {
-        "id": "ref-eleanor-001",
+        "id": "ref-frank-001",
         "provenance": "synthetic",
         "receivedAt": "2026-07-18T08:00:00Z",
         "urgency": "elective",
         "procedure": {
-          "text": "Right upper lobectomy",
-          "snomedCode": "173171007",
-          "icd10PCS": "0BBK0ZZ",
-          "category": "intrathoracic",
-          "risk": "elevated"
+          "text": "Elective open colectomy (right hemicolectomy)",
+          "snomedCode": "17791002",
+          "icd10PCS": "0DTE0ZZ",
+          "category": "intraperitoneal",
+          "risk": "elevated",
+          "incisionType": "upper abdominal",
+          "upperAbdominal": true,
+          "lungResection": false,
+          "estimatedDuration": ">2h",
+          "surgeryDurationBucket": ">2h",
+          "anesthesiaType": "general",
+          "bleedingRisk": "high"
         },
-        "indication": "Stage IA2 non-small cell lung cancer, right upper lobe. 1.8 cm adenocarcinoma identified on CT chest. Oncology recommends surgical resection.",
-        "referringProvider": "Dr. Amara Osei, Thoracic Oncology",
-        "receivingSurgeon": "Dr. James Whitfield, Thoracic Surgery",
-        "notes": "Patient is a current smoker. Severe COPD — pulmonary clearance required prior to scheduling. Cardiac evaluation also warranted given age and comorbidities."
+        "indication": "Ascending colon adenocarcinoma, 3.1 cm, T2N0M0 on staging CT. Surgical resection recommended by colorectal oncology.",
+        "referringProvider": "Dr. Linda Park, Colorectal Surgery",
+        "notes": "Patient has significant cardiac and pulmonary comorbidities. Cardiology and pulmonary pre-op evaluation anticipated."
       },
 
       "conditions": [
-        {
-          "code": "J44.1",
-          "system": "ICD-10",
-          "snomedCode": "13645005",
-          "text": "Severe COPD (GOLD Stage 3)",
-          "clinicalStatus": "active",
-          "verificationStatus": "confirmed",
-          "onsetDate": "2018-06-01",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Condition/eleanor-001-copd",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          },
-          "demoRelevance": "Drives pulmonary evaluation spine — ppo calculations, perfusion scan, CPET"
-        },
-        {
-          "code": "I48.0",
-          "system": "ICD-10",
-          "snomedCode": "195080001",
-          "text": "Paroxysmal atrial fibrillation",
-          "clinicalStatus": "active",
-          "verificationStatus": "confirmed",
-          "onsetDate": "2024-01-15",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Condition/eleanor-002-afib",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          },
-          "demoRelevance": "Explains apixaban use; contributes to cardiac evaluation"
-        },
         {
           "code": "I10",
           "system": "ICD-10",
           "snomedCode": "59621000",
           "text": "Essential hypertension",
           "clinicalStatus": "active",
-          "verificationStatus": "confirmed",
-          "onsetDate": "2015-03-01",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Condition/eleanor-003-htn",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
+          "onsetDate": "2010-05-01",
+          "demoRelevance": "Active comorbidity"
+        },
+        {
+          "code": "E11.9",
+          "system": "ICD-10",
+          "snomedCode": "44054006",
+          "text": "Type 2 diabetes mellitus, insulin-dependent",
+          "clinicalStatus": "active",
+          "onsetDate": "2014-08-15",
+          "demoRelevance": "RCRI component: insulin-treated DM (+1)"
+        },
+        {
+          "code": "I25.110",
+          "system": "ICD-10",
+          "snomedCode": "22298006",
+          "text": "Atherosclerotic heart disease — prior MI with mid-LAD stent (>12 months ago, stable)",
+          "clinicalStatus": "active",
+          "onsetDate": "2020-02-10",
+          "demoRelevance": "RCRI component: ischemic heart disease (+1). Stent >12mo — NOT active ACS. Active cardiac gate: CLEAR."
+        },
+        {
+          "code": "J44.1",
+          "system": "ICD-10",
+          "snomedCode": "13645005",
+          "text": "Moderate COPD (GOLD Stage 2)",
+          "clinicalStatus": "active",
+          "onsetDate": "2017-03-20",
+          "demoRelevance": "Triggers ARISCAT pulmonary pathway"
+        },
+        {
+          "code": "J20.9",
+          "system": "ICD-10",
+          "snomedCode": "10509002",
+          "text": "Acute bronchitis — recent (within last month)",
+          "clinicalStatus": "active",
+          "onsetDate": "2026-06-25",
+          "demoRelevance": "ARISCAT: recent respiratory infection (+17 pts)"
+        },
+        {
+          "code": "F17.210",
+          "system": "ICD-10",
+          "snomedCode": "77176002",
+          "text": "Current smoker — ~30 pack-years",
+          "clinicalStatus": "active",
+          "demoRelevance": "Triggers pulmonary comorbidity flag; ARISCAT optimization bundle includes smoking cessation referral"
         },
         {
           "code": "E78.5",
@@ -95,855 +106,296 @@
           "snomedCode": "13644009",
           "text": "Hyperlipidemia",
           "clinicalStatus": "active",
-          "verificationStatus": "confirmed",
-          "onsetDate": "2016-09-01",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Condition/eleanor-004-hld",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
-        },
-        {
-          "code": "C34.11",
-          "system": "ICD-10",
-          "snomedCode": "254637007",
-          "text": "NSCLC, right upper lobe, stage IA2 (1.8 cm adenocarcinoma)",
-          "clinicalStatus": "active",
-          "verificationStatus": "confirmed",
-          "onsetDate": "2026-05-10",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Condition/eleanor-005-nsclc",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          },
-          "demoRelevance": "Primary indication for surgery"
-        },
-        {
-          "code": "N18.2",
-          "system": "ICD-10",
-          "snomedCode": "431856006",
-          "text": "Chronic kidney disease, stage 2 (mildly decreased)",
-          "clinicalStatus": "active",
-          "verificationStatus": "confirmed",
-          "onsetDate": "2022-04-01",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Condition/eleanor-006-ckd",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          },
-          "demoRelevance": "Creatinine 1.2 mg/dL — does not trigger RCRI component (threshold 2.0)"
-        },
-        {
-          "code": "F17.210",
-          "system": "ICD-10",
-          "snomedCode": "77176002",
-          "text": "Current smoker — cigarettes, uncomplicated",
-          "clinicalStatus": "active",
-          "verificationStatus": "confirmed",
-          "packYears": 40,
-          "provenance": {
-            "source": "fhir",
-            "reference": "Condition/eleanor-007-smoking",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
+          "onsetDate": "2012-01-01"
         }
       ],
 
       "medications": {
-        "_note": "Apixaban is the key medication discrepancy — FHIR shows DISCONTINUED, transcript reveals ACTIVE. This is the demo catch.",
+        "_note": "Empagliflozin (Jardiance) is the medication discrepancy — mentioned in transcript but missing from structured FHIR medication list. SGLT2i requires 3-4 day perioperative hold (euglycemic DKA risk).",
         "fhirMedications": [
           {
-            "text": "Tiotropium bromide 18 mcg inhaled daily",
-            "rxnormCode": "896188",
-            "brandName": "Spiriva",
-            "indication": "COPD maintenance",
+            "text": "Insulin glargine (Lantus) 24 units subcutaneous QHS",
+            "rxnormCode": "274783",
+            "brandName": "Lantus",
+            "indication": "Insulin-dependent type 2 diabetes",
             "status": "active",
-            "startDate": "2019-01-15",
-            "provenance": {
-              "source": "fhir",
-              "reference": "MedicationRequest/eleanor-med-001",
-              "extractedBy": "fhir-normalizer",
-              "verified": true
-            },
-            "perioperativeNote": "Continue perioperatively"
+            "perioperativeNote": "Continue until day before surgery; adjust per endocrinology sliding-scale protocol",
+            "demoRelevance": "RCRI: insulin-treated DM component fires"
           },
           {
-            "text": "Albuterol sulfate 90 mcg MDI, 2 puffs q4-6h PRN",
-            "rxnormCode": "745679",
-            "brandName": "ProAir HFA",
-            "indication": "COPD rescue inhaler",
+            "text": "Metformin 1000 mg PO BID",
+            "rxnormCode": "860975",
+            "brandName": "Glucophage",
+            "indication": "Type 2 diabetes",
             "status": "active",
-            "startDate": "2018-06-01",
-            "provenance": {
-              "source": "fhir",
-              "reference": "MedicationRequest/eleanor-med-002",
-              "extractedBy": "fhir-normalizer",
-              "verified": true
-            },
-            "perioperativeNote": "Continue; ensure available day of surgery"
-          },
-          {
-            "text": "Fluticasone propionate/salmeterol 500 mcg/50 mcg inhaled BID",
-            "rxnormCode": "896209",
-            "brandName": "Advair Diskus",
-            "indication": "COPD maintenance — combined ICS/LABA",
-            "status": "active",
-            "startDate": "2020-03-10",
-            "provenance": {
-              "source": "fhir",
-              "reference": "MedicationRequest/eleanor-med-003",
-              "extractedBy": "fhir-normalizer",
-              "verified": true
-            },
-            "perioperativeNote": "Continue perioperatively"
-          },
-          {
-            "text": "Apixaban 5 mg PO BID",
-            "rxnormCode": "1364430",
-            "brandName": "Eliquis",
-            "indication": "Prior DVT (resolved)",
-            "status": "DISCONTINUED",
-            "startDate": "2024-09-01",
-            "discontinuedDate": "2025-11-10",
-            "discontinuedReason": "DVT treatment course complete",
-            "provenance": {
-              "source": "fhir",
-              "reference": "MedicationRequest/eleanor-med-004",
-              "extractedBy": "fhir-normalizer",
-              "verified": true
-            },
-            "discrepancyFlag": true,
-            "discrepancyDetail": "FHIR shows DISCONTINUED. Transcript reveals patient is still actively taking apixaban — now for paroxysmal atrial fibrillation diagnosed Jan 2024. Medication list was never updated in EHR after AFib diagnosis. This is the medication reconciliation catch.",
-            "perioperativeNote": "REQUIRES CLINICIAN REVIEW — if confirmed active, hold 48h preoperatively. Do not generate hold instruction autonomously."
-          },
-          {
-            "text": "Amlodipine 5 mg PO daily",
-            "rxnormCode": "17767",
-            "brandName": "Norvasc",
-            "indication": "Hypertension",
-            "status": "active",
-            "startDate": "2016-01-20",
-            "provenance": {
-              "source": "fhir",
-              "reference": "MedicationRequest/eleanor-med-005",
-              "extractedBy": "fhir-normalizer",
-              "verified": true
-            },
-            "perioperativeNote": "Continue perioperatively"
+            "perioperativeNote": "Hold 24-48h preoperatively (contrast/renal risk)"
           },
           {
             "text": "Atorvastatin 40 mg PO daily",
             "rxnormCode": "617311",
             "brandName": "Lipitor",
-            "indication": "Hyperlipidemia",
+            "indication": "Hyperlipidemia, secondary CV prevention",
             "status": "active",
-            "startDate": "2017-04-05",
-            "provenance": {
-              "source": "fhir",
-              "reference": "MedicationRequest/eleanor-med-006",
-              "extractedBy": "fhir-normalizer",
-              "verified": true
-            },
             "perioperativeNote": "Continue perioperatively"
           },
           {
-            "text": "Omeprazole 20 mg PO daily",
-            "rxnormCode": "40790",
-            "brandName": "Prilosec",
-            "indication": "GERD",
+            "text": "Metoprolol succinate 50 mg PO daily",
+            "rxnormCode": "866514",
+            "brandName": "Toprol-XL",
+            "indication": "Hypertension, secondary CV prevention post-MI",
             "status": "active",
-            "startDate": "2021-07-01",
-            "provenance": {
-              "source": "fhir",
-              "reference": "MedicationRequest/eleanor-med-007",
-              "extractedBy": "fhir-normalizer",
-              "verified": true
-            },
-            "perioperativeNote": "Continue perioperatively"
+            "perioperativeNote": "Continue perioperatively — do NOT hold"
+          },
+          {
+            "text": "Lisinopril 10 mg PO daily",
+            "rxnormCode": "314077",
+            "brandName": "Prinivil",
+            "indication": "Hypertension, post-MI cardiac remodeling",
+            "status": "active",
+            "perioperativeNote": "Hold morning of surgery"
+          },
+          {
+            "text": "Tiotropium bromide 18 mcg inhaled daily",
+            "rxnormCode": "896188",
+            "brandName": "Spiriva",
+            "indication": "COPD maintenance (LAMA)",
+            "status": "active",
+            "perioperativeNote": "Continue perioperatively; verify technique"
+          },
+          {
+            "text": "Fluticasone propionate/salmeterol 250 mcg/50 mcg inhaled BID",
+            "rxnormCode": "896209",
+            "brandName": "Advair Diskus",
+            "indication": "COPD maintenance (ICS/LABA)",
+            "status": "active",
+            "perioperativeNote": "Continue perioperatively; verify technique"
+          },
+          {
+            "text": "Aspirin 81 mg PO daily",
+            "rxnormCode": "243670",
+            "indication": "Secondary cardiovascular prevention post-MI/stent",
+            "status": "active",
+            "perioperativeNote": "REQUIRES CLINICIAN DECISION: generally continue for stent patients; confirm with cardiology"
           }
         ],
         "transcriptMentioned": [
           {
-            "text": "I take my blood thinner every day — the one for my heart rhythm.",
-            "transcriptSpan": "PT turn 4",
-            "resolvedDrug": "Apixaban (inferred from 'heart rhythm' + AFib diagnosis)",
+            "text": "I also take Jardiance — my endocrinologist added it a few months ago for my kidneys and heart. I take it every morning.",
+            "transcriptSpan": "PT turn 6",
+            "resolvedDrug": "Empagliflozin (Jardiance) 10 mg PO daily — SGLT2 inhibitor",
             "status": "ACTIVE per patient report",
-            "conflictsWith": "MedicationRequest/eleanor-med-004",
-            "conflictType": "status-mismatch — FHIR DISCONTINUED vs transcript ACTIVE",
-            "requiresReconciliation": true
+            "conflictsWith": "FHIR medication list — Jardiance NOT present",
+            "conflictType": "omission — medication not captured in structured list",
+            "requiresReconciliation": true,
+            "clinicalSignificance": "SGLT2i requires 3-4 day perioperative hold. Risk of euglycemic diabetic ketoacidosis (DKA) with continued use in perioperative period. Must be documented and hold planned."
           }
         ]
       },
 
       "observations": [
         {
-          "code": "20150-9",
+          "code": "59408-5",
           "system": "LOINC",
-          "text": "FEV1 (absolute)",
-          "value": 1.2,
-          "unit": "L",
-          "percentPredicted": 45,
-          "effectiveAt": "2026-06-15",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/eleanor-obs-fev1",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          },
-          "demoRelevance": "Drives ppo calculation — ppo FEV1 < 40% triggers perfusion scan"
-        },
-        {
-          "code": "19926-5",
-          "system": "LOINC",
-          "text": "FEV1/FVC ratio",
-          "value": 0.58,
-          "unit": "ratio",
-          "effectiveAt": "2026-06-15",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/eleanor-obs-fev1fvc",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
-        },
-        {
-          "code": "19911-7",
-          "system": "LOINC",
-          "text": "DLCO (% predicted)",
-          "value": 41,
-          "unit": "%predicted",
-          "effectiveAt": "2026-06-15",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/eleanor-obs-dlco",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          },
-          "demoRelevance": "ppo DLCO < 40% threshold also triggers perfusion scan"
-        },
-        {
-          "code": "33762-6",
-          "system": "LOINC",
-          "text": "NT-proBNP",
-          "value": 890,
-          "unit": "pg/mL",
-          "referenceRange": "< 125 pg/mL (age < 75)",
-          "interpretation": "elevated",
-          "effectiveAt": "2026-07-20",
-          "provenance": {
-            "source": "synthetic",
-            "reference": "Observation/eleanor-obs-ntprobnp",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          },
-          "demoRelevance": "Elevated NT-proBNP triggers Cardiology Referral node"
-        },
-        {
-          "code": "2160-0",
-          "system": "LOINC",
-          "text": "Creatinine, serum",
-          "value": 1.2,
-          "unit": "mg/dL",
-          "interpretation": "mildly elevated",
-          "effectiveAt": "2026-06-10",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/eleanor-obs-creatinine",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          },
-          "demoRelevance": "< 2.0 mg/dL — RCRI creatinine component does NOT fire"
-        },
-        {
-          "code": "62238-1",
-          "system": "LOINC",
-          "text": "eGFR (CKD-EPI)",
-          "value": 65,
-          "unit": "mL/min/1.73m2",
-          "interpretation": "mildly decreased",
-          "effectiveAt": "2026-06-10",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/eleanor-obs-egfr",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
+          "text": "SpO2 — oxygen saturation by pulse oximetry",
+          "value": 93,
+          "unit": "%",
+          "interpretation": "mildly reduced",
+          "effectiveAt": "2026-07-15",
+          "demoRelevance": "ARISCAT: SpO2 91-95% = +8 pts"
         },
         {
           "code": "718-7",
           "system": "LOINC",
           "text": "Hemoglobin",
-          "value": 11.8,
+          "value": 12.1,
           "unit": "g/dL",
-          "interpretation": "mild anemia",
-          "effectiveAt": "2026-06-10",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/eleanor-obs-hgb",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          },
-          "demoRelevance": "Anemia of chronic disease — relevant to anesthesia planning"
-        },
-        {
-          "code": "55284-4",
-          "system": "LOINC",
-          "text": "Blood pressure",
-          "value": "138/82",
-          "unit": "mmHg",
-          "interpretation": "stage 1 hypertension",
-          "effectiveAt": "2026-07-18",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/eleanor-obs-bp",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
-        },
-        {
-          "code": "8867-4",
-          "system": "LOINC",
-          "text": "Heart rate",
-          "value": 78,
-          "unit": "bpm",
-          "interpretation": "normal sinus rhythm at time of measurement",
-          "effectiveAt": "2026-07-18",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/eleanor-obs-hr",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
-        },
-        {
-          "code": "29463-7",
-          "system": "LOINC",
-          "text": "Body weight",
-          "value": 62,
-          "unit": "kg",
-          "effectiveAt": "2026-07-18",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/eleanor-obs-weight",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
-        }
-      ],
-
-      "rcri": {
-        "calculatedScore": 1,
-        "components": [
-          {
-            "component": "High-risk surgery (intrathoracic)",
-            "present": true,
-            "value": 1,
-            "provenance": {
-              "source": "synthetic",
-              "reference": "Referral/ref-eleanor-001",
-              "extractedBy": "protocol-engine",
-              "verified": true
-            }
-          },
-          {
-            "component": "Ischemic heart disease",
-            "present": false,
-            "value": 0,
-            "note": "AFib present but no documented CAD, prior MI, or angina",
-            "provenance": {
-              "source": "fhir",
-              "reference": "Condition bundle — no IHD code found",
-              "extractedBy": "protocol-engine",
-              "verified": true
-            }
-          },
-          {
-            "component": "History of congestive heart failure",
-            "present": false,
-            "value": 0,
-            "provenance": {
-              "source": "fhir",
-              "reference": "Condition bundle — no CHF code found",
-              "extractedBy": "protocol-engine",
-              "verified": true
-            }
-          },
-          {
-            "component": "Cerebrovascular disease",
-            "present": false,
-            "value": 0,
-            "provenance": {
-              "source": "fhir",
-              "reference": "Condition bundle — no CVA/TIA code found",
-              "extractedBy": "protocol-engine",
-              "verified": true
-            }
-          },
-          {
-            "component": "Insulin-treated diabetes mellitus",
-            "present": false,
-            "value": 0,
-            "note": "No diabetes documented",
-            "provenance": {
-              "source": "fhir",
-              "reference": "Condition bundle — no DM code found",
-              "extractedBy": "protocol-engine",
-              "verified": true
-            }
-          },
-          {
-            "component": "Preoperative creatinine > 2.0 mg/dL",
-            "present": false,
-            "value": 0,
-            "note": "Creatinine 1.2 mg/dL — below threshold",
-            "provenance": {
-              "source": "fhir",
-              "reference": "Observation/eleanor-obs-creatinine",
-              "extractedBy": "protocol-engine",
-              "verified": true
-            }
-          }
-        ],
-        "interpretation": "RCRI 1 — low predicted cardiac risk (~1%). NT-proBNP triggered by elevated-risk surgery + poor functional capacity, not RCRI alone.",
-        "guidelineCitation": "AHA/ACC 2024 Perioperative Guideline — Section 3.2"
-      },
-
-      "functionalCapacity": {
-        "status": "below-threshold",
-        "metsEstimate": 3,
-        "note": "DASI administered. Score reflects severe exertional dyspnea at minimal activity — unable to walk one flight of stairs without stopping. Exercise limitation is primarily pulmonary (COPD), but per AHA/ACC guideline functional capacity assessment includes symptom-limited exertion regardless of etiology.",
-        "dasiScore": 14.2,
-        "dasiMetsEstimate": 3.0,
-        "threshold": 4,
-        "belowThreshold": true,
-        "provenance": {
-          "source": "synthetic",
-          "reference": "Questionnaire/eleanor-dasi-001",
-          "extractedBy": "fhir-normalizer",
-          "verified": true
-        }
-      },
-
-      "pulmonaryEvaluation": {
-        "provenance": "synthetic",
-        "guidelineCitation": "ERS/ESTS 2022 — Functional evaluation before lung resection",
-        "procedureDetails": {
-          "resectionType": "right upper lobectomy",
-          "segmentsRemoved": 3,
-          "totalBronchopulmonarySegments": 18,
-          "anatomicFractionRemoved": 0.167
-        },
-        "ppoCalculations": {
-          "step1_anatomic": {
-            "method": "anatomic segment method",
-            "fractionRemoved": 0.167,
-            "ppoFEV1_L": 1.0,
-            "ppoFEV1_percentPredicted": 37,
-            "ppoDLCO_percentPredicted": 34,
-            "threshold": 40,
-            "ppoFEV1BelowThreshold": true,
-            "ppoDLCOBelowThreshold": true,
-            "nextStep": "Quantitative V/Q perfusion scan indicated — both ppo values < 40%"
-          },
-          "step2_perfusionScan": {
-            "method": "quantitative V/Q perfusion scan",
-            "rightUpperLobePerfusionFraction": 0.18,
-            "ppoFEV1_L": 0.98,
-            "ppoFEV1_percentPredicted": 36,
-            "ppoDLCO_percentPredicted": 34,
-            "threshold": 40,
-            "ppoFEV1BelowThreshold": true,
-            "ppoDLCOBelowThreshold": true,
-            "nextStep": "ppo values still marginal after perfusion correction — CPET indicated"
-          },
-          "step3_cpet": {
-            "method": "cardiopulmonary exercise testing",
-            "VO2max_mL_kg_min": 13,
-            "VO2max_percentPredicted": 58,
-            "peakWorkload_W": 65,
-            "VE_VCO2_slope": 38,
-            "oxygenPulse": 8.4,
-            "riskClassification": "elevated perioperative pulmonary risk",
-            "riskThresholds": {
-              "lowRisk": "> 20 mL/kg/min",
-              "elevatedRisk": "10–20 mL/kg/min",
-              "veryHighRisk": "< 10 mL/kg/min"
-            },
-            "determination": "VO₂max 13 mL/kg/min falls in the elevated risk range (10–20). Multidisciplinary review required. Does not mandate cancellation — informs risk counseling and anesthesia planning.",
-            "nextStep": "Multidisciplinary review (thoracic surgery + pulmonology + anesthesia) + informed consent documentation"
-          }
-        }
-      },
-
-      "syntheticDocuments": {
-        "_note": "All documents below are synthetic, clearly labeled, and injected via simulation buttons during the demo.",
-        "cardiologyLetter": {
-          "id": "doc-cardiology-letter-eleanor",
-          "provenance": "synthetic",
-          "receivedAt": "2026-07-25T14:30:00Z",
-          "author": "Dr. Priya Nair, Cardiology",
-          "text": "Thank you for referring Ms. Eleanor Marsh for pre-operative cardiac evaluation. I have reviewed her history, examination, and recent investigations. She has paroxysmal atrial fibrillation, hypertension, and an NT-proBNP of 890 pg/mL. There is no documented history of ischemic heart disease or decompensated heart failure. From a cardiac standpoint, she is cleared for the proposed right upper lobectomy, pending echocardiogram to evaluate for structural heart disease given the elevated NT-proBNP. Please proceed with echocardiogram and I will review the results.",
-          "keyPhrase": "cleared pending echocardiogram",
-          "engineInterpretation": {
-            "documentReceived": true,
-            "clearanceComplete": false,
-            "conditionalPhraseDetected": "pending echocardiogram",
-            "nodeGenerated": "Echocardiogram Required",
-            "explanation": "Receipt of clearance letter does not satisfy the Cardiology Clearance requirement. Conditional clearance detected. Echo node added to graph."
-          }
-        },
-        "echocardiogramReport": {
-          "id": "doc-echo-eleanor",
-          "provenance": "synthetic",
-          "receivedAt": "2026-07-28T10:00:00Z",
-          "author": "Dr. Kenji Watanabe, Echocardiography",
-          "findings": {
-            "LVEF": "62%",
-            "LVSize": "Normal",
-            "wallMotion": "Normal — no regional abnormalities",
-            "valves": "Trivial mitral regurgitation, no hemodynamically significant valvular disease",
-            "diastolicFunction": "Grade 1 diastolic dysfunction (mild impairment — E/A ratio 0.9)",
-            "pericardium": "Normal",
-            "RV": "Normal size and function"
-          },
-          "conclusion": "Normal LV systolic function. No structural heart disease to explain elevated NT-proBNP. Mild diastolic dysfunction likely related to hypertension and age.",
-          "engineInterpretation": {
-            "structuralDiseasePresent": false,
-            "cardiologyClearanceNodeClosed": true,
-            "determination": "Echo normal — cardiology clearance complete"
-          }
-        },
-        "dasiQuestionnaire": {
-          "id": "questionnaire-dasi-eleanor",
-          "provenance": "synthetic",
-          "submittedAt": "2026-07-19T09:15:00Z",
-          "responses": {
-            "q1_selfCare": true,
-            "q2_walkIndoors": true,
-            "q3_walkFlatBlock": true,
-            "q4_climbFlight": false,
-            "q5_runShortDistance": false,
-            "q6_lightHousework": true,
-            "q7_moderateHousework": false,
-            "q8_heavyHousework": false,
-            "q9_yardWork": false,
-            "q10_sexualActivity": false,
-            "q11_moderateRecreation": false,
-            "q12_strenuous": false
-          },
-          "dasiScore": 14.2,
-          "metsEstimate": 3.0,
-          "belowThreshold": true,
-          "threshold_METs": 4,
-          "interpretation": "Poor functional capacity — < 4 METs. Combined with elevated-risk (intrathoracic) surgery, NT-proBNP measurement is indicated per AHA/ACC 2024 guideline."
-        }
-      },
-
-      "transcript": {
-        "provenance": "synthetic",
-        "visitDate": "2026-07-10",
-        "visitType": "Pre-operative consultation",
-        "keyExtracts": [
-          {
-            "speaker": "PT",
-            "text": "I take my blood thinner every day — the one for my heart rhythm. My cardiologist put me on it after they found my heart was going in and out of rhythm.",
-            "extractedFact": "Patient actively taking anticoagulant for AFib",
-            "conflictsWith": "MedicationRequest/eleanor-med-004 (DISCONTINUED in FHIR)",
-            "requiresReconciliation": true
-          },
-          {
-            "speaker": "PT",
-            "text": "I get winded just walking to the mailbox some days. Stairs are really hard — I have to stop halfway up.",
-            "extractedFact": "Severely limited functional capacity — consistent with DASI < 4 METs"
-          },
-          {
-            "speaker": "PT",
-            "text": "I've been smoking since I was in my twenties. I know I should stop. I've tried the patches.",
-            "extractedFact": "Current smoker, longstanding history — consistent with 40 pack-year history"
-          },
-          {
-            "speaker": "DR",
-            "text": "Your breathing tests show your lungs are working at about 45 percent of what we'd expect. Because we're removing part of your right lung, we need to calculate how much function you'll have after surgery.",
-            "extractedFact": "FEV1 45% predicted — pulmonary evaluation underway"
-          }
-        ]
-      },
-
-      "anesthesiaConsiderations": {
-        "provenance": "synthetic",
-        "generatedAt": "final-readiness-packet",
-        "items": [
-          "One-lung ventilation anticipated — marginal pulmonary reserve (ppo FEV1 36%). Discuss intraoperative management with thoracic anesthesia team.",
-          "Thoracic epidural analgesia recommended for post-operative pain control to facilitate early mobilization.",
-          "Mild anemia (Hgb 11.8) — consider preoperative optimization if time permits.",
-          "Apixaban — confirm hold timing with cardiology (48h minimum preoperatively for CrCl > 50 mL/min).",
-          "CKD stage 2 — nephrotoxic agents to be avoided; adjust dosing accordingly.",
-          "Current smoker — pulmonary toilet optimization, incentive spirometry teaching preoperatively."
-        ]
-      }
-    },
-
-    {
-      "id": "case-b-david-chen",
-      "provenance": "synthetic",
-      "demoRole": "Case B — bookend, ~45 seconds",
-
-      "demographics": {
-        "name": "David Chen",
-        "dateOfBirth": "1981-04-22",
-        "ageYears": 45,
-        "sex": "male",
-        "gender": "male",
-        "mrn": "SYNTH-002",
-        "primaryLanguage": "English"
-      },
-
-      "referral": {
-        "id": "ref-david-001",
-        "provenance": "synthetic",
-        "receivedAt": "2026-07-18T09:00:00Z",
-        "urgency": "elective",
-        "procedure": {
-          "text": "Left knee arthroscopic partial meniscectomy",
-          "snomedCode": "443435000",
-          "icd10PCS": "0SBD4ZZ",
-          "category": "extremity/orthopedic",
-          "risk": "low"
-        },
-        "indication": "Left medial meniscus tear confirmed on MRI. Conservative management failed after 3 months of physical therapy. Orthopedic surgery recommends arthroscopic repair.",
-        "referringProvider": "Dr. Sarah Kim, Orthopedic Surgery",
-        "notes": "Healthy 45-year-old male. No cardiac history. Cleared by PCP at annual visit 3 months ago. No preoperative concerns anticipated."
-      },
-
-      "conditions": [],
-
-      "medications": {
-        "fhirMedications": [],
-        "transcriptMentioned": [],
-        "_note": "No active medications. No discrepancies. Medication review node resolves immediately."
-      },
-
-      "observations": [
-        {
-          "code": "55284-4",
-          "system": "LOINC",
-          "text": "Blood pressure",
-          "value": "118/74",
-          "unit": "mmHg",
-          "interpretation": "normal",
-          "effectiveAt": "2026-04-10",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/david-obs-bp",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
-        },
-        {
-          "code": "8867-4",
-          "system": "LOINC",
-          "text": "Heart rate",
-          "value": 64,
-          "unit": "bpm",
-          "interpretation": "normal",
-          "effectiveAt": "2026-04-10",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/david-obs-hr",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
+          "interpretation": "mild anemia — above ARISCAT threshold of 10",
+          "effectiveAt": "2026-07-10",
+          "demoRelevance": "ARISCAT: Hb 12.1 > 10 g/dL = 0 pts (anemia component does not fire)"
         },
         {
           "code": "2160-0",
           "system": "LOINC",
           "text": "Creatinine, serum",
-          "value": 0.9,
+          "value": 1.0,
           "unit": "mg/dL",
           "interpretation": "normal",
-          "effectiveAt": "2026-04-10",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/david-obs-creatinine",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
-        },
-        {
-          "code": "718-7",
-          "system": "LOINC",
-          "text": "Hemoglobin",
-          "value": 15.2,
-          "unit": "g/dL",
-          "interpretation": "normal",
-          "effectiveAt": "2026-04-10",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/david-obs-hgb",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
-        },
-        {
-          "code": "2093-3",
-          "system": "LOINC",
-          "text": "Total cholesterol",
-          "value": 182,
-          "unit": "mg/dL",
-          "interpretation": "normal",
-          "effectiveAt": "2026-04-10",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/david-obs-chol",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
+          "effectiveAt": "2026-07-10",
+          "demoRelevance": "RCRI: creatinine < 2.0 mg/dL — component does NOT fire"
         },
         {
           "code": "4548-4",
           "system": "LOINC",
-          "text": "HbA1c",
-          "value": 5.2,
+          "text": "Hemoglobin A1c",
+          "value": 8.2,
           "unit": "%",
-          "interpretation": "normal",
-          "effectiveAt": "2026-04-10",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/david-obs-hba1c",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
+          "interpretation": "above target — suboptimal DM control",
+          "effectiveAt": "2026-06-01"
         },
         {
-          "code": "29463-7",
+          "code": "55284-4",
           "system": "LOINC",
-          "text": "Body weight",
-          "value": 78,
-          "unit": "kg",
-          "effectiveAt": "2026-04-10",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/david-obs-weight",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
+          "text": "Blood pressure",
+          "value": 144,
+          "unit": "mmHg systolic",
+          "effectiveAt": "2026-07-15"
         },
         {
-          "code": "39156-5",
+          "code": "8867-4",
           "system": "LOINC",
-          "text": "BMI",
-          "value": 24.1,
-          "unit": "kg/m2",
-          "interpretation": "normal",
-          "effectiveAt": "2026-04-10",
-          "provenance": {
-            "source": "fhir",
-            "reference": "Observation/david-obs-bmi",
-            "extractedBy": "fhir-normalizer",
-            "verified": true
-          }
+          "text": "Heart rate",
+          "value": 72,
+          "unit": "bpm",
+          "effectiveAt": "2026-07-15"
+        },
+        {
+          "code": "20150-9",
+          "system": "LOINC",
+          "text": "FEV1 % predicted",
+          "value": 65,
+          "unit": "%predicted",
+          "effectiveAt": "2026-05-20",
+          "demoRelevance": "GOLD Stage 2 COPD — FEV1 50-79% predicted. No ppo calculation needed (not a resection)."
         }
       ],
 
       "rcri": {
-        "calculatedScore": 0,
-        "components": [
-          {
-            "component": "High-risk surgery (intrathoracic, intraperitoneal, or suprainguinal vascular)",
-            "present": false,
-            "value": 0,
-            "note": "Arthroscopic extremity procedure — not high-risk by RCRI definition"
-          },
-          {
-            "component": "Ischemic heart disease",
-            "present": false,
-            "value": 0
-          },
-          {
-            "component": "History of congestive heart failure",
-            "present": false,
-            "value": 0
-          },
-          {
-            "component": "Cerebrovascular disease",
-            "present": false,
-            "value": 0
-          },
-          {
-            "component": "Insulin-treated diabetes mellitus",
-            "present": false,
-            "value": 0
-          },
-          {
-            "component": "Preoperative creatinine > 2.0 mg/dL",
-            "present": false,
-            "value": 0,
-            "note": "Creatinine 0.9 mg/dL"
-          }
-        ],
-        "interpretation": "RCRI 0 — very low predicted cardiac risk. No further cardiac evaluation indicated.",
-        "guidelineCitation": "AHA/ACC 2024 Perioperative Guideline — Section 3.2"
-      },
-
-      "functionalCapacity": {
-        "status": "at-or-above-threshold",
-        "metsEstimate": 10,
-        "note": "Patient reports running 5K three times per week without cardiovascular symptoms. Functional capacity clearly ≥ 10 METs from chart documentation alone. No questionnaire required.",
-        "source": "chart documentation — self-reported exercise history confirmed at annual visit April 2026",
-        "provenance": {
-          "source": "fhir",
-          "reference": "Encounter/david-annual-visit-2026",
-          "extractedBy": "fhir-normalizer",
-          "verified": true
+        "expectedScore": 3,
+        "components": {
+          "highRiskSurgery": { "present": true, "note": "Intraperitoneal colectomy = +1" },
+          "ischemicHeartDisease": { "present": true, "note": "Prior MI / LAD stent = +1" },
+          "historyOfCHF": { "present": false, "note": "No CHF documented" },
+          "cerebrovascularDisease": { "present": false, "note": "No CVA/TIA documented" },
+          "insulinTreatedDM": { "present": true, "note": "On insulin glargine = +1" },
+          "creatinineAbove2": { "present": false, "note": "Creatinine 1.0 mg/dL" }
         }
       },
 
-      "protocolDetermination": {
-        "procedureRisk": "low",
-        "activeCardiacConditions": "none",
-        "rcri": 0,
-        "functionalCapacity": "excellent (≥ 10 METs)",
-        "biomarkerIndicated": false,
-        "specialistEvaluationIndicated": false,
-        "testingIndicated": false,
-        "pathwayStatus": "ready-to-schedule",
-        "finalOutput": "No preoperative cardiac testing indicated.",
-        "guidelineCitation": {
-          "guideline": "AHA/ACC 2024 Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery",
-          "section": "Routine preoperative testing",
-          "classOfRecommendation": "III (Harm)",
-          "levelOfEvidence": "B-NR",
-          "text": "Routine preoperative cardiac testing is not recommended for patients undergoing low-risk surgery."
+      "ariscat": {
+        "expectedScore": 59,
+        "expectedRisk": "high",
+        "components": {
+          "age70": { "points": 3, "note": "51-80 range" },
+          "spo293": { "points": 8, "note": "91-95% range" },
+          "recentBronchitis": { "points": 17, "note": "Within last month" },
+          "hb12_1": { "points": 0, "note": "Hb 12.1 > 10 g/dL — anemia component does NOT fire" },
+          "upperAbdominalIncision": { "points": 15, "note": "Open colectomy = upper abdominal" },
+          "durationOver2h": { "points": 16, "note": "Expected >2h surgical time" },
+          "elective": { "points": 0, "note": "Not emergency" }
         },
-        "terminalStatement": "Operational requirements complete → Ready To Schedule"
+        "total": 59,
+        "optimizationBundle": ["incentive-spirometry", "inhaler-optimization", "smoking-cessation-referral", "chest-pt", "prehabilitation-referral"]
       },
 
-      "transcript": {
-        "provenance": "synthetic",
-        "visitDate": "2026-07-10",
-        "visitType": "Pre-operative consultation",
-        "keyExtracts": [
-          {
-            "speaker": "PT",
-            "text": "I feel fine, honestly. I run three times a week, about a 5K each time. The only issue is my knee.",
-            "extractedFact": "Functional capacity ≥ 10 METs — no cardiovascular symptoms with vigorous exertion"
-          },
-          {
-            "speaker": "PT",
-            "text": "I don't take any medications. I had my physical in April and everything was normal.",
-            "extractedFact": "No medications — confirmed against FHIR. No discrepancies."
-          },
-          {
-            "speaker": "DR",
-            "text": "You're young and healthy and this is a low-risk procedure. We shouldn't need to do any extra heart testing for this.",
-            "extractedFact": "Referring provider concurs with no additional cardiac workup"
-          }
-        ]
-      }
+      "functionalCapacity": {
+        "status": "unknown",
+        "dasiScore": 26,
+        "dasiMetsEstimate": 3.0,
+        "note": "DASI 26 → ~3 METs — below 4-MET threshold. Limited by dyspnea and angina-equivalent exertional discomfort. Functional capacity assessment driving biomarker evaluation."
+      },
+
+      "demoScript": [
+        {
+          "beat": 1,
+          "title": "Referral Received",
+          "trigger": "Start Referral",
+          "events": ["REFERRAL_RECEIVED", "FHIR_IMPORTED", "TRANSCRIPT_IMPORTED"],
+          "graphMutations": [
+            "Procedure Classification ✓ (intraperitoneal, elevated-risk)",
+            "Active Cardiac Screen ✓ (prior MI is stable — not active ACS)",
+            "RCRI = 3 ✓ (high-risk surgery + IHD + insulin-DM)",
+            "Functional Capacity — MISSING (DASI questionnaire sent automatically)",
+            "ARISCAT = 59 HIGH → Optimization bundle fires: Incentive Spirometry, Inhaler Optimization, Smoking Cessation Referral, Chest PT, Prehabilitation",
+            "Medication Discrepancy — Empagliflozin in transcript, not in FHIR → Medication Reconciliation Required"
+          ],
+          "narration": "Referral received. Protocol engine runs. Two tracks launch simultaneously: the cardiac spine sees RCRI=3 and waits for functional capacity. The pulmonary spine scores ARISCAT HIGH and immediately queues the optimization bundle — no testing required, just action.",
+          "agentActions": [
+            "searchChart (DASI / functional capacity documentation) → not found",
+            "sendPatientQuestionnaire (DASI) → sent automatically (Tier 1)"
+          ]
+        },
+        {
+          "beat": 2,
+          "title": "DASI Submitted — Biomarker Ordered",
+          "trigger": "Submit DASI",
+          "events": ["QUESTIONNAIRE_RECEIVED"],
+          "graphMutations": [
+            "Functional Capacity ✓ (DASI 26 ≈ 3 METs — below 4-MET threshold)",
+            "NT-proBNP Biomarker node ADDED (elevated-risk surgery + RCRI 3 + poor FC)"
+          ],
+          "narration": "DASI returns 3 METs — below threshold. Per AHA/ACC 2024, NT-proBNP is indicated. The agent searches existing labs first (cost ladder), finds none, drafts the order.",
+          "agentActions": [
+            "searchExistingEvidence (NT-proBNP) → not found",
+            "draftOrder (NT-proBNP) → clinician approval required (Tier 2)"
+          ]
+        },
+        {
+          "beat": 3,
+          "title": "Biomarker Order Approved + Lab Returns",
+          "trigger": "Approve Biomarker Order → Receive Lab Result",
+          "events": ["ORDER_APPROVED", "LAB_RESULT_RECEIVED"],
+          "graphMutations": [
+            "NT-proBNP 480 pg/mL — ELEVATED (threshold ≥300 per AHA/ACC 2024)",
+            "Cardiology E-Consult node ADDED"
+          ],
+          "narration": "NT-proBNP 480 pg/mL — above the 300 pg/mL threshold. The graph mutates: a Cardiology E-Consult node appears. The agent searches for an existing cardiology evaluation, finds none, and drafts the referral."
+        },
+        {
+          "beat": 4,
+          "title": "Cardiology Letter — Trust-But-Verify",
+          "trigger": "Receive Cardiology Letter",
+          "events": ["DOCUMENT_RECEIVED"],
+          "graphMutations": [
+            "Document Received ✓",
+            "Cardiology Clearance ✗ — conditional phrase detected: 'cleared pending echocardiogram'",
+            "Echocardiogram node ADDED"
+          ],
+          "cardiologyLetterText": "Mr. Delgado has been evaluated. He has stable ischemic heart disease with a mid-LAD DES placed in February 2020 (>12 months, no concerns for DAPT). No decompensated heart failure, active ACS, or unstable arrhythmia. From a cardiac standpoint he is cleared for the proposed right hemicolectomy, pending echocardiogram to evaluate LV function given NT-proBNP of 480 pg/mL.",
+          "narration": "Cardiology letter arrives. The Navigator validates content, not just existence. 'Cleared pending echocardiogram' — the clearance is conditional. The graph keeps the node open and adds an Echo requirement."
+        },
+        {
+          "beat": 5,
+          "title": "Echo Normal — Cardiac Clearance Complete",
+          "trigger": "Receive Echo",
+          "events": ["DOCUMENT_RECEIVED"],
+          "graphMutations": [
+            "Echocardiogram ✓ (EF 55%, no significant pathology)",
+            "Cardiology Clearance ✓ — all cardiac blocking nodes closed"
+          ],
+          "echoText": "Transthoracic echocardiogram: LVEF 55%, mild LV diastolic dysfunction (Grade 1), no regional wall motion abnormalities, no significant valvular disease, mild LAE. Findings are consistent with hypertensive heart disease. No structural contraindication to elective surgery."
+        },
+        {
+          "beat": 6,
+          "title": "Medication Timeline Approved — Empagliflozin Hold Planned",
+          "trigger": "Approve Medication Timeline",
+          "events": ["CLINICIAN_DECISION"],
+          "graphMutations": [
+            "Medication Reconciliation ✓ — Empagliflozin confirmed, 3-day perioperative hold documented"
+          ],
+          "narration": "Medication timeline approved. The agent caught the SGLT2i discrepancy — Jardiance confirmed active, 3-day hold before surgery planned. No autonomous hold instruction was generated; the clinician made the call."
+        },
+        {
+          "beat": 7,
+          "title": "Ready To Schedule",
+          "trigger": "Final Approval",
+          "events": ["CLINICIAN_DECISION", "READY_TO_SCHEDULE"],
+          "graphMutations": [
+            "All cardiac blocking nodes satisfied",
+            "Optimization bundle logged (non-blocking — actions underway)",
+            "READY TO SCHEDULE ✓"
+          ],
+          "finalPacketHighlights": [
+            "RCRI 3 — elevated cardiac risk",
+            "NT-proBNP 480 pg/mL elevated → echo normal (EF 55%) → cardiology cleared",
+            "ARISCAT 59 (HIGH) — optimization bundle: incentive spirometry, inhaler check, smoking cessation referral, chest PT, prehabilitation",
+            "Empagliflozin hold: 3 days preoperatively",
+            "Metoprolol: continue — do NOT hold",
+            "Aspirin: continue (LAD stent — per cardiology)",
+            "Lisinopril: hold morning of surgery",
+            "Metformin: hold 24-48h preoperatively"
+          ]
+        }
+      ]
     }
   ]
 }

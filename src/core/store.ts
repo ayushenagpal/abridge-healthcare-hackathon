@@ -5,6 +5,8 @@
  * updates clinical/operational state, then repeatedly: runs the deterministic
  * protocol engine, diffs the graph, and lets the agent take one action — until
  * no operational work remains, then waits. Nothing advances the graph manually.
+ *
+ * Single demo case: Frank Delgado, 70M, elective open right hemicolectomy.
  */
 import {
   type AgentDecision,
@@ -61,7 +63,6 @@ export interface Interaction {
 
 export interface Snapshot {
   started: boolean;
-  caseId: "A" | "B";
   patientState: PatientState | null;
   protocol: ProtocolResult | null;
   graph: ReadinessGraph | null;
@@ -117,7 +118,6 @@ export class Case {
   private eventSeq = 0;
   private listeners = new Set<() => void>();
   private provider: LlmProvider;
-  private caseId: "A" | "B" = "A";
 
   constructor(provider: LlmProvider = new MockLlmProvider()) {
     this.provider = provider;
@@ -139,7 +139,6 @@ export class Case {
   private buildSnapshot(): Snapshot {
     return {
       started: this.state != null,
-      caseId: this.caseId,
       patientState: this.state,
       protocol: this.protocol,
       graph: this.graphHistory.at(-1) ?? null,
@@ -187,18 +186,17 @@ export class Case {
     this.commit();
   }
 
-  selectCase = (id: "A" | "B") => {
-    this.caseId = id;
-    this.reset();
-  };
-
   start = () => this.dispatch(this.makeEvent("REFERRAL_RECEIVED", {}));
+
   submitDasi = () =>
     this.dispatch(this.makeEvent("QUESTIONNAIRE_RECEIVED", SYNTHETIC.dasi));
+
   approveBiomarkerOrder = () =>
     this.dispatch(this.makeEvent("ORDER_APPROVED", { order: "NT-proBNP" }));
+
   receiveLabResult = () =>
     this.dispatch(this.makeEvent("LAB_RESULT_RECEIVED", SYNTHETIC.ntProBnp));
+
   receiveCardiologyLetter = () =>
     this.dispatch(
       this.makeEvent("DOCUMENT_RECEIVED", {
@@ -206,26 +204,19 @@ export class Case {
         ...SYNTHETIC.cardiologyLetter,
       }),
     );
+
   receiveEcho = () =>
     this.dispatch(
       this.makeEvent("DOCUMENT_RECEIVED", { docType: "echo", ...SYNTHETIC.echo }),
     );
+
   approveMedicationTimeline = () =>
     this.dispatch(
       this.makeEvent("CLINICIAN_DECISION", { kind: "medication-timeline" }),
     );
+
   finalApproval = () =>
     this.dispatch(this.makeEvent("CLINICIAN_DECISION", { kind: "final" }));
-
-  // Pulmonary pathway controls (Case A)
-  receivePftResult = () =>
-    this.dispatch(this.makeEvent("LAB_RESULT_RECEIVED", { docType: "pft", ...SYNTHETIC.pft }));
-  receivePerfusionScan = () =>
-    this.dispatch(this.makeEvent("LAB_RESULT_RECEIVED", { docType: "perfusion-scan", ...SYNTHETIC.perfusionScan }));
-  receiveCpetResult = () =>
-    this.dispatch(this.makeEvent("LAB_RESULT_RECEIVED", { docType: "cpet", ...SYNTHETIC.cpet }));
-  approveMdtReview = () =>
-    this.dispatch(this.makeEvent("CLINICIAN_DECISION", { kind: "mdt-review" }));
 
   // --- Core processing ---
   private async dispatch(event: WorkflowEvent) {
@@ -278,16 +269,13 @@ export class Case {
     const p = event.payload as Record<string, unknown>;
     switch (event.type) {
       case "LAB_RESULT_RECEIVED":
-        if (p.docType === "pft") return `FEV1 ${p.fev1_percentPredicted}% · DLCO ${p.dlco_percentPredicted}% · ppo FEV1 ${p.ppoFev1_percentPredicted}% · ppo DLCO ${p.ppoDlco_percentPredicted}%`;
-        if (p.docType === "perfusion-scan") return `ppo FEV1 corrected: ${p.ppoFev1_percentPredicted}% · ppo DLCO: ${p.ppoDlco_percentPredicted}%`;
-        if (p.docType === "cpet") return `VO₂max ${p.vo2max_mL_kg_min} mL/kg/min`;
         return `NT-proBNP ${p.value} ${p.unit}`;
       case "DOCUMENT_RECEIVED":
         return p.docType === "cardiology-letter"
           ? '"…cleared pending echocardiogram…"'
           : "Echocardiogram report";
       case "QUESTIONNAIRE_RECEIVED":
-        return `DASI ≈ ${p.metsEstimate} METs`;
+        return `DASI score ${p.score} ≈ ${p.metsEstimate} METs`;
       default:
         return undefined;
     }
@@ -306,8 +294,8 @@ export class Case {
 
   private applyDataEffect(event: WorkflowEvent) {
     if (event.type === "REFERRAL_RECEIVED") {
-      this.state = buildInitialState(this.caseId);
-      this.log("protocol", "Reading transcript, FHIR, and referral");
+      this.state = buildInitialState();
+      this.log("protocol", "Reading transcript, FHIR, and referral — Frank Delgado, open colectomy");
       return;
     }
     if (!this.state) return;
@@ -338,80 +326,28 @@ export class Case {
         break;
       }
       case "LAB_RESULT_RECEIVED": {
-        const docType = p.docType as string | undefined;
-
-        if (docType === "pft") {
-          // PFT results: add FEV1, DLCO, and computed ppo observations.
-          this.state.ops.pftResultReceived = true;
-          const pftObs: ChartObservation[] = [
-            { code: "20150-9", system: "http://loinc.org", text: "FEV1 % predicted", value: p.fev1_percentPredicted as number, unit: "%predicted", effectiveAt: NOW, provenance: syntheticProvenance("lab/pft") },
-            { code: "19911-7", system: "http://loinc.org", text: "DLCO % predicted", value: p.dlco_percentPredicted as number, unit: "%predicted", effectiveAt: NOW, provenance: syntheticProvenance("lab/pft") },
-            { code: "ppo-fev1", system: "local", text: "ppo FEV1 % predicted (anatomic)", value: p.ppoFev1_percentPredicted as number, unit: "%predicted", effectiveAt: NOW, provenance: syntheticProvenance("lab/pft-ppo") },
-            { code: "ppo-dlco", system: "local", text: "ppo DLCO % predicted (anatomic)", value: p.ppoDlco_percentPredicted as number, unit: "%predicted", effectiveAt: NOW, provenance: syntheticProvenance("lab/pft-ppo") },
-          ];
-          this.state.observations = [...this.state.observations, ...pftObs];
-          this.log("tool", `PFTs received — FEV1 ${p.fev1_percentPredicted}% predicted, DLCO ${p.dlco_percentPredicted}% predicted. ppo FEV1 ${p.ppoFev1_percentPredicted}%, ppo DLCO ${p.ppoDlco_percentPredicted}% — both < 40%.`);
-        } else if (docType === "perfusion-scan") {
-          // Perfusion-corrected ppo values.
-          this.state.ops.perfusionScanResultReceived = true;
-          this.state.evidence = [
-            ...this.state.evidence,
-            validateEvidence({
-              id: `ev-perfusion-${this.eventSeq}`,
-              requirementId: "perfusion-scan",
-              kind: "lab",
-              label: "Quantitative V/Q perfusion scan",
-              content: {
-                ppoFev1Corrected: p.ppoFev1_percentPredicted,
-                ppoDlcoCorrected: p.ppoDlco_percentPredicted,
-                rightUpperLobeFraction: p.rightUpperLobeFraction,
-              },
-              provenance: syntheticProvenance("lab/perfusion-scan"),
-              validation: { status: "pending", reasons: [] },
-            }),
-          ];
-          this.log("tool", `Perfusion scan: RUL contributes ${Math.round((p.rightUpperLobeFraction as number) * 100)}% of total perfusion. Corrected ppo FEV1 ${p.ppoFev1_percentPredicted}%, ppo DLCO ${p.ppoDlco_percentPredicted}% — still < 40%.`);
-        } else if (docType === "cpet") {
-          // CPET result.
-          this.state.ops.cpetResultReceived = true;
-          this.state.evidence = [
-            ...this.state.evidence,
-            validateEvidence({
-              id: `ev-cpet-${this.eventSeq}`,
-              requirementId: "cpet",
-              kind: "lab",
-              label: "CPET report",
-              content: { vo2max: p.vo2max_mL_kg_min, peakWorkload_W: p.peakWorkload_W, ve_vco2_slope: p.ve_vco2_slope },
-              provenance: syntheticProvenance("lab/cpet"),
-              validation: { status: "pending", reasons: [] },
-            }),
-          ];
-          this.log("tool", `CPET: VO₂max ${p.vo2max_mL_kg_min} mL/kg/min — elevated perioperative pulmonary risk (10–20 range).`);
-        } else {
-          // NT-proBNP (cardiac spine).
-          const obs: ChartObservation = {
-            code: p.code as string,
-            system: "http://loinc.org",
-            text: p.text as string,
-            value: p.value as number,
-            unit: p.unit as string,
-            effectiveAt: NOW,
+        const obs: ChartObservation = {
+          code: p.code as string,
+          system: "http://loinc.org",
+          text: p.text as string,
+          value: p.value as number,
+          unit: p.unit as string,
+          effectiveAt: NOW,
+          provenance: syntheticProvenance("lab/nt-probnp"),
+        };
+        this.state.observations = [...this.state.observations, obs];
+        this.state.evidence = [
+          ...this.state.evidence,
+          validateEvidence({
+            id: `ev-lab-${this.eventSeq}`,
+            requirementId: "biomarker",
+            kind: "lab",
+            label: "NT-proBNP result",
+            content: { value: p.value },
             provenance: syntheticProvenance("lab/nt-probnp"),
-          };
-          this.state.observations = [...this.state.observations, obs];
-          this.state.evidence = [
-            ...this.state.evidence,
-            validateEvidence({
-              id: `ev-lab-${this.eventSeq}`,
-              requirementId: "biomarker",
-              kind: "lab",
-              label: "NT-proBNP result",
-              content: { value: p.value },
-              provenance: syntheticProvenance("lab/nt-probnp"),
-              validation: { status: "pending", reasons: [] },
-            }),
-          ];
-        }
+            validation: { status: "pending", reasons: [] },
+          }),
+        ];
         break;
       }
       case "DOCUMENT_RECEIVED": {
@@ -424,7 +360,7 @@ export class Case {
               id: `ev-cards-${this.eventSeq}`,
               requirementId: "cardiology-review",
               kind: "specialist-letter",
-              label: "Cardiology consultation letter",
+              label: "Cardiology e-consult letter",
               content: {
                 cleared: p.cleared,
                 pendingEcho: p.pendingEcho,
@@ -454,9 +390,6 @@ export class Case {
         if (p.kind === "medication-timeline") {
           this.state.ops.medicationTimelineApproved = true;
           this.approvePendingReview("medication-timeline");
-        } else if (p.kind === "mdt-review") {
-          this.state.ops.mdtReviewApproved = true;
-          this.approvePendingReview("mdt-review");
         } else if (p.kind === "final") {
           this.state.ops.finalApproved = true;
           this.approvePendingReview("final");

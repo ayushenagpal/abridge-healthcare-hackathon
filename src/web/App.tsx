@@ -22,20 +22,14 @@ export function App() {
   const [auto, setAuto] = useState(false);
   const [view, setView] = useState<GraphView>("graph");
   const ps = snapshot.patientState;
-  const caseId = snapshot.caseId;
   const nodeStatus = (id: string) =>
     snapshot.graph?.nodes.find((n) => n.id === id)?.status;
 
   const started = snapshot.started;
-
-  // --- Case A button conditions ---
-  const pftDone = ps?.ops.pftResultReceived ?? false;
-  const perfusionDone = ps?.ops.perfusionScanResultReceived ?? false;
-  const cpetDone = ps?.ops.cpetResultReceived ?? false;
-  const mdtDone = ps?.ops.mdtReviewApproved ?? false;
   const dasiDone = (ps?.questionnaires.length ?? 0) > 0;
   const orderApproved = ps?.ops.biomarkerOrderApproved ?? false;
-  const labDone = ps?.observations.some((o) => o.text.toLowerCase().includes("natriuretic")) ?? false;
+  const labDone =
+    ps?.observations.some((o) => o.text.toLowerCase().includes("natriuretic")) ?? false;
   const letterDone = ps?.evidence.some((e) => e.kind === "specialist-letter") ?? false;
   const echoDone = ps?.evidence.some((e) => e.label.toLowerCase().includes("echo")) ?? false;
   const medApproved = ps?.ops.medicationTimelineApproved ?? false;
@@ -43,13 +37,7 @@ export function App() {
 
   const en = {
     start: !started,
-    // Pulmonary spine (Case A only)
-    pft: started && !pftDone && caseId === "A",
-    perfusion: pftDone && !perfusionDone && caseId === "A",
-    cpet: perfusionDone && !cpetDone && caseId === "A",
-    mdtReview: cpetDone && !mdtDone && nodeStatus("mdt-review") === "waiting-clinician" && caseId === "A",
-    // Cardiac spine (Case A only)
-    dasi: started && !dasiDone && caseId === "A",
+    dasi: started && !dasiDone,
     approveOrder: nodeStatus("biomarker") === "waiting-clinician",
     lab: orderApproved && !labDone,
     letter: !!nodeStatus("cardiology-review") && !letterDone,
@@ -64,30 +52,25 @@ export function App() {
   const onApprove = (subject: string) => {
     if (subject === "order") caseStore.approveBiomarkerOrder();
     else if (subject === "medication-timeline") caseStore.approveMedicationTimeline();
-    else if (subject === "mdt-review") caseStore.approveMdtReview();
     else if (subject === "final") caseStore.finalApproval();
   };
 
-  async function runAutoA() {
+  async function runAuto() {
     setAuto(true);
     caseStore.reset();
     const steps: (() => void | Promise<void>)[] = [
       caseStore.start,
-      caseStore.receivePftResult,
-      caseStore.receivePerfusionScan,
-      caseStore.receiveCpetResult,
       caseStore.submitDasi,
       caseStore.approveBiomarkerOrder,
       caseStore.receiveLabResult,
       caseStore.receiveCardiologyLetter,
       caseStore.receiveEcho,
       caseStore.approveMedicationTimeline,
-      caseStore.approveMdtReview,
       caseStore.finalApproval,
     ];
     for (const step of steps) {
       await step();
-      await sleep(1000);
+      await sleep(1200);
     }
     setAuto(false);
   }
@@ -166,50 +149,29 @@ export function App() {
           <button className="btn primary" disabled={!en.start || auto} onClick={caseStore.start}>
             Start Referral
           </button>
-
-          {caseId === "A" && (<>
-            <span className="sep">│</span>
-            <span className="lbl-sm">Pulmonary</span>
-            <button className="btn" disabled={!en.pft || auto} onClick={caseStore.receivePftResult}>
-              Receive PFTs
-            </button>
-            <button className="btn" disabled={!en.perfusion || auto} onClick={caseStore.receivePerfusionScan}>
-              Receive Perfusion Scan
-            </button>
-            <button className="btn" disabled={!en.cpet || auto} onClick={caseStore.receiveCpetResult}>
-              Receive CPET
-            </button>
-            <span className="sep">│</span>
-            <span className="lbl-sm">Cardiac</span>
-            <button className="btn" disabled={!en.dasi || auto} onClick={caseStore.submitDasi}>
-              Submit DASI
-            </button>
-            <button className="btn" disabled={!en.approveOrder || auto} onClick={caseStore.approveBiomarkerOrder}>
-              Approve Biomarker Order
-            </button>
-            <button className="btn" disabled={!en.lab || auto} onClick={caseStore.receiveLabResult}>
-              Receive NT-proBNP
-            </button>
-            <button className="btn" disabled={!en.letter || auto} onClick={caseStore.receiveCardiologyLetter}>
-              Receive Cardiology Letter
-            </button>
-            <button className="btn" disabled={!en.echo || auto} onClick={caseStore.receiveEcho}>
-              Receive Echo
-            </button>
-            <span className="sep">│</span>
-            <button className="btn" disabled={!en.med || auto} onClick={caseStore.approveMedicationTimeline}>
-              Approve Medication Timeline
-            </button>
-            <button className="btn" disabled={!en.mdtReview || auto} onClick={caseStore.approveMdtReview}>
-              Approve MDT Review
-            </button>
-          </>)}
-
+          <button className="btn" disabled={!en.dasi || auto} onClick={caseStore.submitDasi}>
+            Submit DASI
+          </button>
+          <button className="btn" disabled={!en.approveOrder || auto} onClick={caseStore.approveBiomarkerOrder}>
+            Approve Biomarker Order
+          </button>
+          <button className="btn" disabled={!en.lab || auto} onClick={caseStore.receiveLabResult}>
+            Receive NT-proBNP
+          </button>
+          <button className="btn" disabled={!en.letter || auto} onClick={caseStore.receiveCardiologyLetter}>
+            Receive Cardiology Letter
+          </button>
+          <button className="btn" disabled={!en.echo || auto} onClick={caseStore.receiveEcho}>
+            Receive Echo
+          </button>
+          <button className="btn" disabled={!en.med || auto} onClick={caseStore.approveMedicationTimeline}>
+            Approve Medication Timeline
+          </button>
           <button className="btn" disabled={!en.final || auto} onClick={caseStore.finalApproval}>
             Final Approval
           </button>
           <span style={{ flex: 1 }} />
-          <button className="btn" disabled={auto} onClick={runAutoA}>
+          <button className="btn" disabled={auto} onClick={runAuto}>
             ▶ Auto demo
           </button>
           <button className="btn ghost" disabled={auto} onClick={() => caseStore.reset()}>

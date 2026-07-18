@@ -103,4 +103,8 @@ export const CITATIONS = {
     "Operational Readiness",
     "Operational requirements are complete when every blocking requirement has validated evidence and required approvals are recorded.",
   ),
+  ariscat: c(
+    "ARISCAT Pulmonary Risk Score [non-authoritative, representative]",
+    "The ARISCAT score (Canet et al., Anesthesiology 2010) stratifies postoperative pulmonary complication risk. Intermediate (26–44) or high (≥45) risk triggers a preoperative optimization bundle rather than additional diagnostic testing.",
+  ),
 } satisfies Record<string, Citation>;

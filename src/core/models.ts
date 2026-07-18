@@ -74,6 +74,9 @@ export const Referral = z.object({
   referringProvider: z.string(),
   receivedAt: z.string(),
   provenance: Provenance,
+  // ARISCAT / pulmonary inputs that are procedure-specific
+  upperAbdominal: z.boolean().optional(),
+  surgeryDurationBucket: z.enum(["<2h", "2-3h", ">3h"]).optional(),
 });
 export type Referral = z.infer<typeof Referral>;
 

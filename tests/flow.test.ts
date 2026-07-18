@@ -8,114 +8,81 @@ function has(c: Case, id: string) {
   return c.getSnapshot().graph?.nodes.some((n) => n.id === id) ?? false;
 }
 
-describe("end-to-end demo flow (mock provider)", () => {
-  it("Case A: Eleanor lobectomy — drives referral -> ready to schedule through dual pathway", async () => {
+describe("end-to-end demo flow — Frank Delgado, open colectomy", () => {
+  it("drives referral to ready-to-schedule through cardiac escalation + pulmonary optimization", async () => {
     const c = new Case();
-    c.selectCase("A");
 
-    // Beat 1: referral received — pulmonary + cardiac spines appear.
+    // Beat 1: referral received.
+    // RCRI=3, ARISCAT HIGH → optimization bundle fires, DASI sent automatically.
     await c.start();
-    expect(status(c, "rcri")).toBe("satisfied"); // RCRI = 1
-    expect(status(c, "pft")).toBe("missing"); // pulmonary spine: PFTs required
-    expect(status(c, "functional-capacity")).toBe("waiting-patient"); // agent sent DASI
-    expect(has(c, "biomarker")).toBe(false);
+    expect(status(c, "rcri")).toBe("satisfied");          // RCRI = 3
+    expect(status(c, "functional-capacity")).toBe("waiting-patient"); // DASI sent
+    expect(has(c, "ariscat-risk")).toBe(true);            // ARISCAT scored
+    expect(status(c, "ariscat-risk")).toBe("satisfied");  // non-blocking assessment
+    expect(has(c, "pulm-opt-incentive-spirometry")).toBe(true); // bundle fires
+    expect(has(c, "pulm-opt-smoking-cessation")).toBe(true);
+    expect(has(c, "biomarker")).toBe(false);              // gated on DASI
 
-    // Pulmonary spine Beat 1: PFTs arrive — ppo < 40% → perfusion scan appears.
-    await c.receivePftResult();
-    expect(status(c, "pft")).toBe("satisfied");
-    expect(has(c, "perfusion-scan")).toBe(true);
-    expect(status(c, "perfusion-scan")).toBe("missing");
-
-    // Pulmonary spine Beat 2: perfusion scan — ppo still < 40% → CPET appears.
-    await c.receivePerfusionScan();
-    expect(status(c, "perfusion-scan")).toBe("satisfied");
-    expect(has(c, "cpet")).toBe(true);
-    expect(status(c, "cpet")).toBe("missing");
-
-    // Pulmonary spine Beat 3: CPET — VO₂max 13 → MDT review appears.
-    await c.receiveCpetResult();
-    expect(status(c, "cpet")).toBe("satisfied");
-    expect(has(c, "mdt-review")).toBe(true);
-    expect(status(c, "mdt-review")).toBe("waiting-clinician");
-
-    // Cardiac spine Beat 1: DASI below threshold → biomarker node appears.
+    // Beat 2: DASI 26 (3 METs, below threshold) → biomarker node appears.
     await c.submitDasi();
     expect(status(c, "functional-capacity")).toBe("satisfied");
     expect(has(c, "biomarker")).toBe(true);
-    expect(status(c, "biomarker")).toBe("waiting-clinician"); // drafted
-    // Prove cost ladder: agent searched before ordering.
+    expect(status(c, "biomarker")).toBe("waiting-clinician"); // agent drafted order
+    // Prove cost ladder: searched before ordering.
     expect(c.getSnapshot().toolLog.some((t) => t.tool === "searchExistingEvidence")).toBe(true);
     expect(c.getSnapshot().toolLog.some((t) => t.tool === "draftOrder")).toBe(true);
 
     await c.approveBiomarkerOrder();
     expect(status(c, "biomarker")).toBe("waiting-external");
 
-    // Elevated NT-proBNP → cardiology review node appears.
+    // Beat 3: NT-proBNP 480 pg/mL (≥300, elevated) → cardiology e-consult appears.
     await c.receiveLabResult();
     expect(status(c, "biomarker")).toBe("satisfied");
     expect(has(c, "cardiology-review")).toBe(true);
 
-    // Trust-but-verify beat: conditional clearance does NOT close cardiology node.
+    // Beat 4: trust-but-verify — conditional clearance does NOT close node.
     await c.receiveCardiologyLetter();
-    expect(status(c, "cardiology-review")).toBe("waiting-external"); // not satisfied
+    expect(status(c, "cardiology-review")).toBe("waiting-external");
     expect(has(c, "echo")).toBe(true);
     expect(status(c, "echo")).not.toBe("satisfied");
 
-    // Echo closes the cardiac loop.
+    // Beat 5: echo closes the cardiac loop.
     await c.receiveEcho();
     expect(status(c, "echo")).toBe("satisfied");
     expect(status(c, "cardiology-review")).toBe("satisfied");
 
-    // Medication reconciliation (apixaban discrepancy).
+    // Beat 6: medication timeline — empagliflozin discrepancy resolved.
     await c.approveMedicationTimeline();
     expect(status(c, "medication-review")).toBe("satisfied");
 
-    // MDT review closes the pulmonary loop.
-    await c.approveMdtReview();
-    expect(status(c, "mdt-review")).toBe("satisfied");
-
-    // All blockers satisfied — awaiting final approval.
+    // All blocking nodes satisfied; pulmonary optimization nodes remain non-blocking.
     expect(c.getSnapshot().graph?.pathwayStatus).not.toBe("ready-to-schedule");
 
-    // Final approval → ready to schedule.
+    // Beat 7: final approval → ready to schedule.
     await c.finalApproval();
     expect(c.getSnapshot().graph?.pathwayStatus).toBe("ready-to-schedule");
     expect(status(c, "ready-to-schedule")).toBe("satisfied");
     expect(c.getSnapshot().toolLog.some((t) => t.tool === "markReadyToSchedule")).toBe(true);
   });
 
-  it("Case B: David low-risk — resolves after start + final approval only", async () => {
+  it("optimization bundle is non-blocking: all pulm-opt nodes have blocksScheduling=false", async () => {
     const c = new Case();
-    c.selectCase("B");
-
     await c.start();
-    // No testing indicated immediately.
-    expect(has(c, "no-testing-indicated")).toBe(true);
-    expect(status(c, "no-testing-indicated")).toBe("satisfied");
-    expect(has(c, "biomarker")).toBe(false);
-    expect(has(c, "cardiology-review")).toBe(false);
-    expect(has(c, "pft")).toBe(false);
-    // Ready to schedule is waiting-clinician (all blockers resolved, just needs final approval).
-    expect(status(c, "ready-to-schedule")).toBe("waiting-clinician");
-
-    await c.finalApproval();
-    expect(c.getSnapshot().graph?.pathwayStatus).toBe("ready-to-schedule");
+    const graph = c.getSnapshot().graph!;
+    const bundleNodes = graph.nodes.filter((n) => n.id.startsWith("pulm-opt-"));
+    expect(bundleNodes.length).toBeGreaterThan(0);
+    expect(bundleNodes.every((n) => n.blocksScheduling === false)).toBe(true);
   });
 
   it("never marks ready to schedule without final clinician approval", async () => {
     const c = new Case();
-    c.selectCase("A");
     await c.start();
-    await c.receivePftResult();
-    await c.receivePerfusionScan();
-    await c.receiveCpetResult();
     await c.submitDasi();
     await c.approveBiomarkerOrder();
     await c.receiveLabResult();
     await c.receiveCardiologyLetter();
     await c.receiveEcho();
     await c.approveMedicationTimeline();
-    await c.approveMdtReview();
     // Deliberately skip finalApproval.
     expect(c.getSnapshot().graph?.pathwayStatus).toBe("in-progress");
     expect(c.getSnapshot().toolLog.some((t) => t.tool === "markReadyToSchedule")).toBe(false);

@@ -1,15 +1,17 @@
 /**
- * Synthetic augmentation for both demo cases.
+ * Synthetic augmentation for the Frank Delgado demo case.
  *
- * Case A — Eleanor Marsh, 71F, right upper lobectomy:
- *   Pulmonary + cardiac dual pathway, medication discrepancy (apixaban),
- *   conditional cardiology clearance, echocardiogrm.
+ * Frank: 70M, elective open right hemicolectomy. Dual tracks:
+ *   CARDIAC: RCRI 3, DASI 26 (3 METs) → NT-proBNP 480 (≥300, elevated)
+ *            → cardiology e-consult → conditional clearance → echo.
+ *   PULMONARY: ARISCAT 59 (HIGH) → optimization bundle fires on referral
+ *              (non-blocking: incentive spirometry, inhaler check,
+ *               smoking cessation, chest PT, prehabilitation).
+ *   MEDICATION: Empagliflozin (SGLT2i) mentioned in transcript, absent
+ *               from FHIR → reconciliation required, 3-day hold planned.
  *
- * Case B — David Chen, 45M, arthroscopic meniscus repair:
- *   RCRI 0, excellent functional capacity, no testing indicated.
- *
- * Every item is marked source:"synthetic". Synthetic artifacts only supply
- * external events — the engine makes every clinical determination.
+ * Every item is marked source:"synthetic". Synthetic artifacts supply external
+ * events only — the engine makes every clinical determination.
  */
 import type { Provenance, Referral } from "./models";
 
@@ -25,107 +27,63 @@ export function syntheticProvenance(reference: string): Provenance {
   };
 }
 
-export function buildReferral(patientId: string, caseId: "A" | "B" = "A"): Referral {
-  if (caseId === "B") {
-    return {
-      id: "referral-2",
-      patientId,
-      procedure: { text: "Left knee arthroscopic partial meniscectomy", snomedCode: "443435000" },
-      urgency: "elective",
-      indication: "Left medial meniscus tear confirmed on MRI. Conservative management failed.",
-      referringProvider: "Dr. S. Kim, Orthopedic Surgery",
-      receivedAt: NOW,
-      provenance: syntheticProvenance("referral/arthroscopic-meniscectomy"),
-    };
-  }
+export function buildReferral(patientId: string): Referral {
   return {
-    id: "referral-1",
+    id: "referral-frank-001",
     patientId,
-    procedure: { text: "Right upper lobectomy", snomedCode: "173171007" },
+    procedure: {
+      text: "Elective open colectomy (right hemicolectomy)",
+      snomedCode: "17791002",
+    },
     urgency: "elective",
-    indication: "Stage IA2 NSCLC, right upper lobe. 1.8 cm adenocarcinoma on CT chest. Oncology recommends surgical resection.",
-    referringProvider: "Dr. A. Osei, Thoracic Oncology",
+    indication:
+      "Ascending colon adenocarcinoma, 3.1 cm, T2N0M0. Surgical resection recommended by colorectal oncology.",
+    referringProvider: "Dr. L. Park, Colorectal Surgery",
     receivedAt: NOW,
-    provenance: syntheticProvenance("referral/right-upper-lobectomy"),
+    provenance: syntheticProvenance("referral/open-colectomy"),
+    upperAbdominal: true,
+    surgeryDurationBucket: ">3h",
   };
 }
 
 // ---------------------------------------------------------------------------
-// Case A (Eleanor Marsh) — external event payloads
+// External event payloads (delivered via simulation controls).
 // ---------------------------------------------------------------------------
 export const SYNTHETIC = {
-  // DASI answers that score 3.0 METs — below 4-MET threshold.
-  // Eleanor is severely limited by COPD exertional dyspnea.
+  // DASI: score 26 → ≈3 METs — below the 4-MET threshold.
+  // Frank is limited by exertional dyspnea and angina-equivalent discomfort.
   dasi: {
-    score: 14.2,
+    score: 26,
     metsEstimate: 3.0,
   },
 
-  // PFT results — FEV1 45% predicted, DLCO 41% predicted.
-  pft: {
-    fev1_L: 1.2,
-    fev1_percentPredicted: 45,
-    fvc_L: 2.07,
-    fev1fvc_ratio: 0.58,
-    dlco_percentPredicted: 41,
-    // Anatomic ppo calculation (RUL = 3 of 18 segments = 16.7%)
-    ppoFev1_percentPredicted: 37,
-    ppoDlco_percentPredicted: 34,
-    belowThreshold: true, // both < 40% → perfusion scan indicated
-  },
-
-  // Quantitative V/Q perfusion scan results.
-  // RUL contributes 18% of total perfusion (vs 16.7% anatomic).
-  perfusionScan: {
-    rightUpperLobeFraction: 0.18,
-    ppoFev1_percentPredicted: 36, // 1.2 × (1 - 0.18) / predicted = 36%
-    ppoDlco_percentPredicted: 34, // 41% × (1 - 0.18) = 34%
-    belowThreshold: true, // still < 40% → CPET indicated
-  },
-
-  // CPET result — VO₂max 13 mL/kg/min (elevated risk range: 10–20).
-  cpet: {
-    vo2max_mL_kg_min: 13,
-    peakWorkload_W: 65,
-    ve_vco2_slope: 38,
-    riskCategory: "elevated", // 10–20 range → elevated perioperative pulmonary risk
-  },
-
-  // Elevated NT-proBNP (cardiac spine).
+  // NT-proBNP: 480 pg/mL.
+  // AHA/ACC 2024 perioperative threshold: ≥300 pg/mL = elevated risk.
   ntProBnp: {
     code: "33762-6",
     text: "Natriuretic peptide.B prohormone N-Terminal [Mass/volume]",
-    value: 890,
+    value: 480,
     unit: "pg/mL",
   },
 
-  // Conditional cardiology clearance — the trust-but-verify beat.
+  // The trust-but-verify beat: conditional cardiology clearance.
   cardiologyLetter: {
-    text: "Ms. Marsh has been evaluated. She has paroxysmal atrial fibrillation, hypertension, and an NT-proBNP of 890 pg/mL. There is no documented ischemic heart disease or decompensated heart failure. From a cardiac standpoint she is cleared for the proposed right upper lobectomy, pending echocardiogram to evaluate for structural heart disease given the elevated NT-proBNP.",
+    text: "Mr. Delgado evaluated. Stable ischemic heart disease, mid-LAD DES >12 months, no active ACS or decompensated HF. Cleared for proposed right hemicolectomy pending echocardiogram to evaluate LV function given NT-proBNP 480 pg/mL.",
     cleared: true,
     pendingEcho: true,
   },
 
-  // Normal echo — closes the cardiology clearance loop.
+  // Normal echo: closes the cardiology clearance loop.
   echo: {
-    text: "Transthoracic echocardiogram: LVEF 62%, no regional wall motion abnormalities, no significant valvular disease, grade 1 diastolic dysfunction.",
+    text: "Transthoracic echocardiogram: LVEF 55%, mild diastolic dysfunction (Grade 1), no regional wall motion abnormalities, no significant valvular disease. No structural contraindication to elective surgery.",
     normal: true,
   },
 
   // Transcript-derived medication discrepancy:
-  // Eleanor mentions active apixaban; FHIR shows it DISCONTINUED 8 months ago.
+  // Empagliflozin (SGLT2i) active per patient — not in FHIR medication list.
+  // Clinically significant: 3-4 day perioperative hold required (euglycemic DKA risk).
   medicationDiscrepancy: {
-    med: "Apixaban (Eliquis) 5mg BID — patient reports taking for atrial fibrillation; FHIR shows DISCONTINUED",
+    med: "Empagliflozin (Jardiance) 10 mg PO daily — patient-reported in transcript; absent from structured medication list. SGLT2i: 3-4 day perioperative hold required.",
     discrepancy: true,
   },
-};
-
-// ---------------------------------------------------------------------------
-// Case B (David Chen) — no external events needed; engine resolves immediately.
-// ---------------------------------------------------------------------------
-export const SYNTHETIC_B = {
-  // David is healthy, no medications, low-risk procedure.
-  // The engine will short-circuit to ready-to-schedule after referral.
-  // No sim buttons needed beyond Start Referral + Final Approval.
-  demoNote: "Case B resolves immediately — RCRI 0, excellent functional capacity, low-risk procedure.",
 };
