@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+dist/
+*.log
+
+# Env
+.env
+.env.local
+
+# Reference material (not for distribution)
+docs/reference/thompson-et-al-2024-2024-aha-acc-acs-asnc-hrs-sca-scct-scmr-svm-guideline-for-perioperative-cardiovascular-management.pdf
