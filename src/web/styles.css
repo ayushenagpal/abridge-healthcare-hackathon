@@ -253,6 +253,9 @@ body {
 .packet .line { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(21, 128, 61, 0.12); font-size: 12px; gap: 10px; }
 .packet .line .k { color: var(--ink-2); }
 .packet .line span:last-child { font-weight: 600; text-align: right; }
+.packet .counsel { margin: 4px 0 2px; padding-left: 18px; }
+.packet .counsel li { font-size: 11.5px; line-height: 1.45; margin-bottom: 5px; color: var(--ink-2); }
+.packet .counsel li b { color: var(--ink); }
 
 /* View toggle in the graph panel header */
 .view-toggle { display: inline-flex; gap: 2px; padding: 2px; background: var(--panel-2); border: 1px solid var(--hair); border-radius: 8px; }

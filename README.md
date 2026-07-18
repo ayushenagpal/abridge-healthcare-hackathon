@@ -6,9 +6,21 @@ patient is **Ready To Schedule** — the protocol engine decides *what* is
 required; the Navigator agent decides *how* to get it done; the clinician owns
 every medical decision.
 
+**Live demo:** https://ayushenagpal.github.io/abridge-healthcare-hackathon/
+(auto-deploys from `main` via GitHub Pages).
+
 Built for the Abridge "Future of Agentic AI in Healthcare" hackathon. See
 [`docs/`](docs/) for the PRD, architecture, clinical rules, demo case, and the
 [implementation plan](docs/implementation-plan.md).
+
+**Demo case:** Frank Delgado, 70 M, elective open right hemicolectomy — a
+dual-risk pathway exercising both the **cardiac** spine (RCRI → DASI →
+NT-proBNP → cardiology → echo) and the **pulmonary** spine (**ARISCAT** score →
+advisory optimization bundle). Two views of the same run: a **Graph**
+(dependency DAG) and a **Timeline** (patient journey by touchpoint, split into
+"what we know" at intake vs the "required workup" the analysis generates). The
+final packet includes a **patient-counseling** section (advisory optimizations
++ medication holds).
 
 ## What it demonstrates
 
@@ -41,9 +53,12 @@ Built for the Abridge "Future of Agentic AI in Healthcare" hackathon. See
 - **`src/core/store.ts`** — the long-running case controller (observe → run
   engine → diff → agent action → wait).
 - **`src/web/`** — React + React Flow SPA that visualizes the system.
-- **`data/abridge/raw/`** — the real Abridge dataset. The demo patient (an 85M
-  with ischemic heart disease, prior MI, and T2DM → RCRI 2) is extracted to
-  `src/data/demo-encounter.json`. The elective-colectomy referral and external
+- **`src/core/protocol/ariscat.ts`** — ARISCAT pulmonary-risk module. High risk
+  generates an advisory optimization bundle; the agent auto-issues Tier-1
+  instructions and drafts Tier-2 referrals, and these render as **Advisory**
+  (non-blocking) rather than unmet blockers.
+- **`data/`** — the real Abridge FHIR dataset plus clearly-marked synthetic
+  augmentation (`data/synthetic/`, `src/core/synthetic.ts`). The referral and external
   events are **synthetic** (`src/core/synthetic.ts`) and clearly marked.
 
 The whole `core/` layer is framework-free and runs in the browser, so the demo

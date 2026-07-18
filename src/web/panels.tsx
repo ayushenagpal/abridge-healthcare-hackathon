@@ -434,6 +434,20 @@ export function ApprovalQueue({
 }
 
 // ---------------------------------------------------------------------------
+// Patient-facing counseling for each advisory optimization.
+const PT_COUNSEL: Record<string, string> = {
+  "pulm-opt-incentive-spirometry":
+    "Use your incentive spirometer — 10 slow deep breaths every hour while awake, before and after surgery.",
+  "pulm-opt-inhaler-optimization":
+    "Keep taking your inhalers exactly as prescribed and bring them to your pre-op visit so we can check your technique.",
+  "pulm-opt-smoking-cessation":
+    "Stop smoking as far ahead of surgery as you can — even a few days lowers your risk of lung problems. We've referred you to a cessation program.",
+  "pulm-opt-chest-pt":
+    "Practice slow deep breathing and gentle coughing daily; plan to sit up and walk as soon as possible after surgery.",
+  "pulm-opt-prehabilitation":
+    "Attend the prehabilitation program to build up your strength and breathing reserve before surgery.",
+};
+
 export function FinalPacket({
   protocol,
   state,
@@ -503,6 +517,34 @@ export function FinalPacket({
               <span>{r.requiresClinicianApproval ? "referred" : "instructed"}</span>
             </div>
           ))}
+        </>
+      )}
+
+      {(optBundle.length > 0 || state.ops.medicationTimelineApproved) && (
+        <>
+          <div className="line" style={{ marginTop: 6 }}>
+            <span className="k" style={{ fontWeight: 700 }}>
+              ─ Patient counseling
+            </span>
+          </div>
+          <ul className="counsel">
+            {optBundle.map((r) => (
+              <li key={r.id}>{PT_COUNSEL[r.id] ?? r.title}</li>
+            ))}
+            {state.ops.medicationTimelineApproved && (
+              <li>
+                <b>Medication hold:</b> Stop empagliflozin (Jardiance) 3 days
+                before surgery to prevent euglycemic ketoacidosis; resume once
+                eating normally per the surgical team. Continue all other
+                medications unless told otherwise.
+              </li>
+            )}
+            <li>
+              Follow the fasting and arrival instructions you'll receive; call
+              the pre-op line with any new symptoms (fever, chest pain,
+              shortness of breath) before surgery.
+            </li>
+          </ul>
         </>
       )}
 
